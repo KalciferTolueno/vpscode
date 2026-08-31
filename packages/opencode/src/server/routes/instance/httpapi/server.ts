@@ -105,6 +105,7 @@ import { layer as locationLayer } from "@opencode-ai/server/location"
 import { sessionLocationLayer } from "@opencode-ai/server/middleware/session-location"
 import { PtyEnvironment } from "@opencode-ai/server/pty-environment"
 import { schemaErrorLayer as v2SchemaErrorLayer } from "@opencode-ai/server/middleware/schema-error"
+import { HttpApiProxy } from "./middleware/proxy"
 import { workspaceHandlers } from "./handlers/workspace"
 import { instanceContextLayer } from "./middleware/instance-context"
 import { workspaceRoutingLayer } from "./middleware/workspace-routing"
@@ -190,6 +191,22 @@ const docResponse = lazy(() => HttpServerResponse.jsonUnsafe(OpenApi.fromApi(Pub
 const docRoute = HttpRouter.use((router) => router.add("GET", "/doc", () => Effect.succeed(docResponse()))).pipe(
   Layer.provide(authOnlyRouterLayer),
 )
+
+const previewRoute = HttpRouter.use((router) =>
+  Effect.gen(function* () {
+    const client = yield* HttpClient.HttpClient
+    yield* router.add("*", "/preview/*", (request) => {
+      const source = new URL(request.url, "http://localhost")
+      const match = source.pathname.match(/^\/preview\/(\d+)(\/.*)?$/)
+      const port = Number(match?.[1])
+      if (!match || !Number.isInteger(port) || port < 1 || port > 65535)
+        return Effect.succeed(HttpServerResponse.empty({ status: 404 }))
+      const target = new URL(`${match[2] ?? "/"}${source.search}`, `http://127.0.0.1:${port}`)
+      if (request.headers.upgrade?.toLowerCase() === "websocket") return HttpApiProxy.websocket(request, target)
+      return HttpApiProxy.http(client, target, { host: target.host }, request)
+    })
+  }),
+).pipe(Layer.provide(authOnlyRouterLayer), Layer.provide(Socket.layerWebSocketConstructorGlobal))
 
 const uiRoute = HttpRouter.use((router) =>
   Effect.gen(function* () {
@@ -280,6 +297,7 @@ export function createRoutes(
     instanceRoutes,
     serverRoutes,
     docRoute,
+    previewRoute,
     uiRoute,
   ).pipe(
     Layer.provide([

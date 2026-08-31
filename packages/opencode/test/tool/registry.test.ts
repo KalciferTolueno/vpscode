@@ -100,6 +100,31 @@ afterEach(async () => {
 })
 
 describe("tool.registry", () => {
+  it.instance("opens a development server in the built-in browser", () =>
+    Effect.gen(function* () {
+      const test = yield* TestInstance
+      const registry = yield* ToolRegistry.Service
+      const preview = (yield* registry.all()).find((tool) => tool.id === "preview")
+
+      expect(preview).toBeDefined()
+      yield* preview!.execute(
+        { port: 4173 },
+        {
+          sessionID: SessionID.make("ses_preview"),
+          messageID: MessageID.make("msg_preview"),
+          agent: "build",
+          abort: AbortSignal.any([]),
+          messages: [],
+          metadata: () => Effect.void,
+          ask: () => Effect.void,
+        },
+      )
+      expect(yield* Effect.promise(() => fs.readFile(path.join(test.directory, ".opencode", "preview"), "utf8"))).toBe(
+        "/preview/4173/",
+      )
+    }),
+  )
+
   it.instance("does not expose task_status", () =>
     Effect.gen(function* () {
       const registry = yield* ToolRegistry.Service
