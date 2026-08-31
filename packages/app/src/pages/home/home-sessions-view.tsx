@@ -210,7 +210,7 @@ function HomeSessionSearch(props: HomeSessionsViewProps) {
             data-component="home-session-search-panel"
             class={`
               absolute flex flex-col overflow-hidden rounded-[3px] border border-v2-border-border-muted
-              bg-v2-background-bg-base shadow-[var(--v2-elevation-floating)]
+              bg-v2-background-bg-base
             `}
             style={{ top: "-6px", left: "-6px", width: "calc(100% + 12px)" }}
           >

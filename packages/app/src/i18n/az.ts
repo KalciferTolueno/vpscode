@@ -646,7 +646,7 @@ export const dict = {
   "error.page.action.checkUpdates": "Yeniləmələri yoxla",
   "error.page.action.updateTo": "{{version}} versiyasına yenilə",
   "error.page.circular": "[Dairəvi]",
-  "error.page.report.prefix": "Bu xətanı VPS Code komandasına",
+  "error.page.report.prefix": "Bu xətanı VPS Code komandasına bildirin",
   "error.page.report.discord": "Discord-da bildirin",
   "error.page.version": "Versiya: {{version}}",
   "error.dev.rootNotFound":

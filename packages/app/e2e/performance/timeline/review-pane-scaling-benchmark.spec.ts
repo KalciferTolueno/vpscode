@@ -174,6 +174,9 @@ async function measureReviewPaneLoad(page: Page, input: { expectedFile: string; 
   await toggle.evaluate((element) => element.setAttribute("data-review-pane-scaling-toggle", ""))
   await installReviewPaneScalingProbe(page, input)
   await toggle.click()
+  await page.locator("#session-side-panel-review-tab").click()
+  await page.getByRole("button", { name: "All project files" }).click()
+  await page.getByRole("option", { name: "Git changes" }).click()
   await page.waitForFunction(
     () =>
       (window as Window & { __reviewPaneScalingProbe?: ReviewPaneScalingProbe }).__reviewPaneScalingProbe

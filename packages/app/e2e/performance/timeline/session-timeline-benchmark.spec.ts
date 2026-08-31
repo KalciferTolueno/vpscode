@@ -189,6 +189,9 @@ async function measureReviewPaneLoad(page: Page, file: string) {
   await installReviewPaneProbe(page, { file })
   await startReviewPaneProbe(page)
   await page.getByRole("button", { name: "Toggle review" }).click()
+  await page.locator("#session-side-panel-review-tab").click()
+  await page.getByRole("button", { name: "All project files" }).click()
+  await page.getByRole("option", { name: "Git changes" }).click()
   await expect(page.locator("#review-panel")).toBeVisible()
   return collectReviewPaneProbe(page)
 }

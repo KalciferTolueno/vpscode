@@ -10,6 +10,7 @@ import { useTheme, type ColorScheme } from "@opencode-ai/ui/theme/context"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useParams } from "@solidjs/router"
 import { useLanguage } from "@/context/language"
+import { PRODUCT_REPO_URL } from "@/product"
 import { usePermission } from "@/context/permission"
 import { usePlatform, type DisplayBackend } from "@/context/platform"
 import { useServerSync } from "@/context/server-sync"
@@ -482,7 +483,7 @@ export const SettingsGeneral: Component = () => {
           description={
             <>
               {language.t("settings.general.row.theme.description")}{" "}
-              <ExternalLink href="https://opencode.ai/docs/themes/">{language.t("common.learnMore")}</ExternalLink>
+              <ExternalLink href={PRODUCT_REPO_URL}>{language.t("common.learnMore")}</ExternalLink>
             </>
           }
         >

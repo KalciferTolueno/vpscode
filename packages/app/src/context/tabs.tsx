@@ -11,6 +11,8 @@ import { SessionTabsRemovedDetail } from "@/components/titlebar-session-events"
 import { sessionHref } from "@/utils/session-route"
 import { createTabMemory } from "./tab-memory"
 import { nextTabAfterClose, pushClosedTab, removeClosedTabs, takeClosedTab, type ClosedTab } from "./closed-tabs"
+import { pathKey } from "@/utils/path-key"
+import { resolveTabDirectory } from "@/utils/project-tabs"
 import { createDraftPromptSession, type PromptModel } from "./prompt-state"
 import { migrateTabs } from "./tab-migration"
 
@@ -33,6 +35,11 @@ export type Tab = SessionTab | DraftTab
 export type TabInfo = {
   title?: string
   directory?: string
+}
+
+export type ProjectTabScope = {
+  server: ServerConnection.Key
+  directories: string[]
 }
 
 type RecentTab = {
@@ -67,6 +74,7 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
     const [recent, setRecent, , recentReady] = persisted(Persist.window("tabs.recent"), createStore<RecentTab>({}))
     const [info, setInfo] = persisted(Persist.window("tabs.info"), createStore<Record<string, TabInfo>>({}))
     const [closed, setClosed, , closedReady] = persisted(Persist.window("tabs.closed"), createStore<ClosedTab[]>([]))
+    const [scope, setScope] = createStore<{ server?: ServerConnection.Key; directories?: string[] }>({})
 
     const params = useParams()
     const navigate = useNavigate()
@@ -147,6 +155,8 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
     })
 
     const navigateTab = (tab: Tab) => {
+      const directory = resolveTabDirectory(tab, info[tabKey(tab)])
+      if (directory) setScope({ server: tab.server, directories: [directory] })
       const href = tabHref(tab)
       setRecentKey(tabKey(tab))
       navigate(href)
@@ -157,7 +167,18 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
       if (!tab) return
       const key = tabKey(tab)
       const draftID = tab.type === "draft" ? tab.draftID : undefined
-      const nextTab = nextTabAfterClose(store, index, recentKey() === key && location.pathname !== "/")
+      const directory = resolveTabDirectory(tab, info[key])
+      const directoryKey = directory ? pathKey(directory) : undefined
+      const nextTab = nextTabAfterClose(
+        store,
+        index,
+        recentKey() === key && location.pathname !== "/",
+        (item) => {
+          if (!directoryKey) return true
+          const other = resolveTabDirectory(item, info[tabKey(item)])
+          return !!other && pathKey(other) === directoryKey
+        },
+      )
       closing.add(key)
       void startTransition(() => {
         setStore(
@@ -181,14 +202,12 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
         const next = { type: "session" as const, ...tab }
         const existing = store.find((item) => tabKey(item) === tabKey(next))
         if (existing) return existing
-        void startTransition(() => {
-          setStore(
-            produce((tabs) => {
-              if (tabs.some((item) => tabKey(item) === tabKey(next))) return
-              tabs.push(next)
-            }),
-          )
-        })
+        setStore(
+          produce((tabs) => {
+            if (tabs.some((item) => tabKey(item) === tabKey(next))) return
+            tabs.push(next)
+          }),
+        )
         return next
       },
       reorder(keys: string[]) {
@@ -209,15 +228,15 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
       async newDraft(draft: Omit<DraftTab, "type" | "draftID">, prompt?: string, model?: PromptModel) {
         const draftID = uuid()
         const tab = { type: "draft" as const, draftID, ...draft }
+        setScope({ server: draft.server, directories: [draft.directory] })
         memory.ensure(tabKey(tab), "prompt", () => createDraftPromptSession(draftID, { prompt, model }))
-        await startTransition(() => {
-          setStore(
-            produce((tabs) => {
-              tabs.push(tab)
-            }),
-          )
-          navigate(draftHref(draftID))
-        })
+        setStore(
+          produce((tabs) => {
+            tabs.push(tab)
+          }),
+        )
+        setRecentKey(tabKey(tab))
+        navigate(draftHref(draftID))
         return tab
       },
       updateDraft(draftID: string, draft: Partial<Omit<DraftTab, "type" | "draftID">>) {
@@ -354,6 +373,14 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
         if (current?.title === next.title && current.directory === next.directory) return
         setInfo(key, next)
       },
+      rememberTabDirectory(tab: SessionTab, directory: string) {
+        const key = tabKey(tab)
+        if (info[key]?.directory === directory) return
+        setInfo(key, { title: info[key]?.title, directory })
+      },
+      setProjectScope(next: ProjectTabScope) {
+        setScope(next)
+      },
       select: navigateTab,
       remember(tab: Tab) {
         const key = tabKey(tab)
@@ -380,6 +407,6 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
       },
     }
 
-    return { ...actions, store, info, ready, recentReady }
+    return { ...actions, store, info, projectScope: scope, ready, recentReady }
   },
 })

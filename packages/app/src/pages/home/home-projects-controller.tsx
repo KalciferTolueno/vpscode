@@ -8,6 +8,7 @@ import { useNotification } from "@/context/notification"
 import { usePlatform } from "@/context/platform"
 import { ServerConnection } from "@/context/server"
 import { closeHomeProject, errorMessage, homeProjectDirectories } from "@/pages/layout/helpers"
+import { PRODUCT_ISSUES_URL } from "@/product"
 import { Persist, persisted } from "@/utils/persist"
 import { showToast } from "@/utils/toast"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
@@ -120,7 +121,7 @@ export function createHomeProjectsController(home: HomeController) {
     },
     utility: {
       settings: openSettings,
-      help: () => platform.openExternal("https://opencode.ai/desktop-feedback"),
+      help: () => platform.openExternal(PRODUCT_ISSUES_URL),
     },
   }
 }

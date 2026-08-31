@@ -6,6 +6,7 @@ import { Switch } from "@opencode-ai/ui/v2/switch-v2"
 import { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useLanguage } from "@/context/language"
+import { PRODUCT_REPO_URL } from "@/product"
 import { usePlatform } from "@/context/platform"
 import { useUpdaterAction } from "../updater-action"
 import { useSettings } from "@/context/settings"
@@ -150,7 +151,7 @@ const AppearanceSection: Component<{ controller: AppearanceSettingsController }>
           description={
             <>
               {language.t("settings.general.row.theme.description")}{" "}
-              <ExternalLink class="settings-v2-link" href="https://opencode.ai/docs/themes/">
+              <ExternalLink class="settings-v2-link" href={PRODUCT_REPO_URL}>
                 {language.t("common.learnMore")}
               </ExternalLink>
             </>

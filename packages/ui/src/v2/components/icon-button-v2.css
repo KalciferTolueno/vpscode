@@ -71,11 +71,10 @@
 
 /* Contrast */
 [data-component="icon-button-v2"][data-variant="contrast"] {
-  background-image:
-    linear-gradient(180deg, var(--v2-alpha-light-20) 0%, var(--v2-alpha-light-0) 100%),
-    linear-gradient(90deg, var(--v2-background-bg-contrast) 0%, var(--v2-background-bg-contrast) 100%);
+  background-color: var(--v2-background-bg-contrast);
+  background-image: none;
   color: var(--v2-text-text-contrast);
-  text-shadow: 0 0.5px 0.5px rgba(0, 0, 0, 0.3);
+  text-shadow: none;
   box-shadow: var(--v2-elevation-button-contrast);
 }
 
@@ -86,7 +85,6 @@
       var(--v2-overlay-simple-overlay-contrast-hover) 0%,
       var(--v2-overlay-simple-overlay-contrast-hover) 100%
     ),
-    linear-gradient(180deg, var(--v2-alpha-light-20) 0%, var(--v2-alpha-light-0) 100%),
     linear-gradient(90deg, var(--v2-background-bg-contrast) 0%, var(--v2-background-bg-contrast) 100%);
 }
 
@@ -97,7 +95,6 @@
       var(--v2-overlay-simple-overlay-contrast-pressed) 0%,
       var(--v2-overlay-simple-overlay-contrast-pressed) 100%
     ),
-    linear-gradient(180deg, var(--v2-alpha-light-20) 0%, var(--v2-alpha-light-0) 100%),
     linear-gradient(90deg, var(--v2-background-bg-contrast) 0%, var(--v2-background-bg-contrast) 100%);
 }
 

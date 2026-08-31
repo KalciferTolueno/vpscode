@@ -1,5 +1,6 @@
 // @refresh reload
 
+import { canvasBackground } from "../canvas"
 import { generateNeutralScale, hexToOklch, oklchToHex, shift } from "../color"
 import { mapV2Foreground } from "./foreground"
 import { mapV2Semantics, mergeV2Tokens } from "./mapping"
@@ -136,7 +137,10 @@ export function resolveThemeVariantV2(variant: ThemeVariant, isDark: boolean): R
   const primitives = generateV2Primitives(variant, isDark)
   const semantics = mapV2Semantics(isDark)
   const foreground = mapV2Foreground(readPalette(variant).ink, isDark, primitives, variant.overrides)
-  return mergeV2Tokens(primitives, semantics, foreground, variant.v2Overrides ?? {})
+  const canvas = canvasBackground(isDark)
+  return mergeV2Tokens(primitives, semantics, foreground, variant.v2Overrides ?? {}, {
+    "v2-background-bg-deep": canvas,
+  })
 }
 
 export function resolveThemeV2(theme: DesktopTheme): { light: ResolvedV2Theme; dark: ResolvedV2Theme } {

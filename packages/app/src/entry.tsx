@@ -9,7 +9,7 @@ import { createBrowserDraftStore } from "@/utils/draft-store"
 import { dict as en } from "@/i18n/en"
 import { dict as zh } from "@/i18n/zh"
 import { authFromToken } from "@/utils/server"
-import pkg from "../package.json"
+import { PRODUCT_FAVICON, PRODUCT_VERSION } from "./product"
 import { ServerConnection } from "./context/server"
 
 const DEFAULT_SERVER_URL_KEY = "opencode.settings.dat:defaultServerUrl"
@@ -70,7 +70,7 @@ const notify: Platform["notify"] = async (title, description, onClick) => {
 
   const notification = new Notification(title, {
     body: description ?? "",
-    icon: "https://opencode.ai/favicon-96x96-v3.png",
+    icon: PRODUCT_FAVICON,
   })
 
   notification.onclick = () => {
@@ -119,7 +119,7 @@ const clearAuthToken = () => {
 const platform: Platform = {
   platform: "web",
   draftStore: createBrowserDraftStore(),
-  version: pkg.version,
+  version: PRODUCT_VERSION,
   openExternal,
   restart,
   notify,
@@ -134,7 +134,7 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
     dsn: import.meta.env.VITE_SENTRY_DSN,
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
-    release: import.meta.env.VITE_SENTRY_RELEASE ?? `web@${pkg.version}`,
+    release: import.meta.env.VITE_SENTRY_RELEASE ?? `web@${PRODUCT_VERSION}`,
     initialScope: {
       tags: {
         platform: "web",

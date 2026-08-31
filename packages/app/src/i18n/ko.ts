@@ -436,7 +436,7 @@ export const dict = {
   "error.page.action.checking": "확인 중...",
   "error.page.action.checkUpdates": "업데이트 확인",
   "error.page.action.updateTo": "{{version}} 버전으로 업데이트",
-  "error.page.report.prefix": "이 오류를 VPS Code 팀에 제보해 주세요: ",
+  "error.page.report.prefix": "이 오류를 VPS Code 팀에 제보해 주세요.",
   "error.page.report.discord": "Discord",
   "error.page.version": "버전: {{version}}",
   "error.dev.rootNotFound":

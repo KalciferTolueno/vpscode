@@ -644,7 +644,7 @@ export const dict = {
   "error.page.action.checkUpdates": "အပ်ဒိတ်များအတွက် စစ်ဆေးပါ။",
   "error.page.action.updateTo": "{{version}} သို့ အပ်ဒိတ်လုပ်ပါ။",
   "error.page.circular": "[မြို့ပတ်]",
-  "error.page.report.prefix": "ဤအမှားအယွင်းကို VPS Code အဖွဲ့ထံ တိုင်ကြားပါ။\nDiscord တွင်",
+  "error.page.report.prefix": "ဤအမှားအယွင်းကို VPS Code အဖွဲ့ထံ တိုင်ကြားပါ။",
   "error.page.report.discord": "Discord တွင်",
   "error.page.version": "ဗားရှင်း- {{version}}",
   "error.dev.rootNotFound":

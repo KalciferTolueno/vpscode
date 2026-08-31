@@ -16,7 +16,7 @@
 
     /* ── Background ── */
     --v2-background-bg-base: var(--v2-grey-50);
-    --v2-background-bg-deep: var(--v2-grey-100);
+    --v2-background-bg-deep: #ffffff;
     --v2-background-bg-layer-01: var(--v2-grey-100);
     --v2-background-bg-layer-02: var(--v2-grey-200);
     --v2-background-bg-layer-03: var(--v2-grey-300);
@@ -110,30 +110,15 @@
     --v2-avatar-bg-gray: #5c5c5cff;
     --v2-avatar-border-gray: #3a3a3aff;
 
-    /* ── Elevation ── */
-    --v2-elevation-raised:
-      0px 2px 4px 0px var(--v2-alpha-dark-4), 0px 1px 2px -1px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-floating:
-      0px 8px 16px 0px var(--v2-alpha-dark-4), 0px 4px 8px 0px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-overlay:
-      0px 16px 32px 0px var(--v2-alpha-dark-4), 0px 8px 16px 0px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-button-neutral:
-      0px 1px 1.5px 0px var(--v2-alpha-dark-10), 0px 0px 0px 0.5px var(--v2-alpha-dark-14),
-      0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-button-contrast:
-      0px 1px 1.5px 0px var(--v2-alpha-dark-20), 0px 0px 0px 0.5px var(--v2-grey-800),
-      inset 0px 1px 2px 0px var(--v2-alpha-light-14), inset 0px -1px 2px 0px var(--v2-alpha-dark-6),
-      0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-elements: 0px 0.5px 0.5px 0px var(--v2-alpha-dark-40);
-    --v2-elevation-switch-off:
-      inset 0px 1px 1px 0px var(--v2-alpha-dark-8), inset 0px 0.5px 0.5px 0px var(--v2-alpha-dark-8),
-      inset 0px 0px 0px 0.5px var(--v2-alpha-dark-10);
-    --v2-elevation-switch-on:
-      inset 0px 2px 2px 0px var(--v2-alpha-dark-10), inset 0px 1px 1px 0px var(--v2-alpha-dark-10),
-      inset 0px 0px 0px 0.5px var(--v2-alpha-dark-20);
+    /* ── Elevation (flat: hairline only, no drop shadow) ── */
+    --v2-elevation-raised: 0 0 0 0.5px var(--v2-alpha-dark-12);
+    --v2-elevation-floating: 0 0 0 0.5px var(--v2-alpha-dark-12);
+    --v2-elevation-overlay: 0 0 0 0.5px var(--v2-alpha-dark-12);
+    --v2-elevation-button-neutral: 0 0 0 0.5px var(--v2-alpha-dark-14);
+    --v2-elevation-button-contrast: 0 0 0 0.5px var(--v2-grey-800);
+    --v2-elevation-elements: none;
+    --v2-elevation-switch-off: inset 0 0 0 0.5px var(--v2-alpha-dark-10);
+    --v2-elevation-switch-on: inset 0 0 0 0.5px var(--v2-alpha-dark-20);
 
     /* ── Illustration ── */
     --v2-illustration-illustration-layer-01: var(--v2-grey-300);
@@ -262,7 +247,7 @@
     color-scheme: light;
 
     --v2-background-bg-base: var(--v2-grey-50);
-    --v2-background-bg-deep: var(--v2-grey-100);
+    --v2-background-bg-deep: #ffffff;
     --v2-background-bg-layer-01: var(--v2-grey-100);
     --v2-background-bg-layer-02: var(--v2-grey-200);
     --v2-background-bg-layer-03: var(--v2-grey-300);
@@ -330,29 +315,14 @@
     --v2-agent-review-solid: var(--v2-green-800);
     --v2-agent-writer-solid: var(--v2-purple-700);
 
-    --v2-elevation-raised:
-      0px 2px 4px 0px var(--v2-alpha-dark-4), 0px 1px 2px -1px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-floating:
-      0px 8px 16px 0px var(--v2-alpha-dark-4), 0px 4px 8px 0px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-overlay:
-      0px 16px 32px 0px var(--v2-alpha-dark-4), 0px 8px 16px 0px var(--v2-alpha-dark-8),
-      0px 0px 0px 0.5px var(--v2-alpha-dark-12), 0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-button-neutral:
-      0px 1px 1.5px 0px var(--v2-alpha-dark-10), 0px 0px 0px 0.5px var(--v2-alpha-dark-14),
-      0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-button-contrast:
-      0px 1px 1.5px 0px var(--v2-alpha-dark-20), 0px 0px 0px 0.5px var(--v2-grey-800),
-      inset 0px 1px 2px 0px var(--v2-alpha-light-14), inset 0px -1px 2px 0px var(--v2-alpha-dark-6),
-      0px 0px 0px 0px var(--v2-alpha-dark-0);
-    --v2-elevation-elements: 0px 0.5px 0.5px 0px var(--v2-alpha-dark-40);
-    --v2-elevation-switch-off:
-      inset 0px 1px 1px 0px var(--v2-alpha-dark-8), inset 0px 0.5px 0.5px 0px var(--v2-alpha-dark-8),
-      inset 0px 0px 0px 0.5px var(--v2-alpha-dark-10);
-    --v2-elevation-switch-on:
-      inset 0px 2px 2px 0px var(--v2-alpha-dark-10), inset 0px 1px 1px 0px var(--v2-alpha-dark-10),
-      inset 0px 0px 0px 0.5px var(--v2-alpha-dark-20);
+    --v2-elevation-raised: 0 0 0 0.5px var(--v2-alpha-dark-12);
+    --v2-elevation-floating: 0 0 0 0.5px var(--v2-alpha-dark-12);
+    --v2-elevation-overlay: 0 0 0 0.5px var(--v2-alpha-dark-12);
+    --v2-elevation-button-neutral: 0 0 0 0.5px var(--v2-alpha-dark-14);
+    --v2-elevation-button-contrast: 0 0 0 0.5px var(--v2-grey-800);
+    --v2-elevation-elements: none;
+    --v2-elevation-switch-off: inset 0 0 0 0.5px var(--v2-alpha-dark-10);
+    --v2-elevation-switch-on: inset 0 0 0 0.5px var(--v2-alpha-dark-20);
 
     --v2-illustration-illustration-layer-01: var(--v2-grey-300);
     --v2-illustration-illustration-layer-02: var(--v2-grey-400);
@@ -384,7 +354,7 @@
     color-scheme: dark;
 
     --v2-background-bg-base: var(--v2-grey-1100);
-    --v2-background-bg-deep: var(--v2-grey-1200);
+    --v2-background-bg-deep: #000000;
     --v2-background-bg-layer-01: var(--v2-grey-1000);
     --v2-background-bg-layer-02: var(--v2-grey-900);
     --v2-background-bg-layer-03: var(--v2-grey-800);
@@ -472,29 +442,14 @@
     --v2-avatar-bg-gray: #5c5c5cff;
     --v2-avatar-border-gray: #aeaeaeff;
 
-    --v2-elevation-raised:
-      0px 2px 4px 0px var(--v2-alpha-dark-30), 0px 1px 2px 0px var(--v2-alpha-dark-30),
-      0px 0px 0px 0.5px var(--v2-alpha-light-16), 0px -0.5px 0px 0px var(--v2-alpha-light-6);
-    --v2-elevation-floating:
-      0px 8px 16px 0px var(--v2-alpha-dark-30), 0px 4px 8px 0px var(--v2-alpha-dark-30),
-      0px 0px 0px 0.5px var(--v2-alpha-light-16), 0px -0.5px 0px 0px var(--v2-alpha-light-6);
-    --v2-elevation-overlay:
-      0px 16px 32px 0px var(--v2-alpha-dark-30), 0px 8px 16px 0px var(--v2-alpha-dark-30),
-      0px 0px 0px 0.5px var(--v2-alpha-light-16), 0px -0.5px 0px 0px var(--v2-alpha-light-6);
-    --v2-elevation-button-neutral:
-      0px 1px 2px 0px var(--v2-alpha-dark-40), 0px 0px 0px 0.5px var(--v2-alpha-light-20),
-      0px -0.5px 0px 0px var(--v2-alpha-light-10);
-    --v2-elevation-button-contrast:
-      0px 1px 2px 0px var(--v2-alpha-dark-40), 0px 0px 0px 0.5px var(--v2-alpha-light-40),
-      inset 0px 0px 0px 0px var(--v2-alpha-light-0), inset 0px 0px 0px 0px var(--v2-alpha-light-0),
-      0px -0.5px 0px 0px var(--v2-alpha-light-30);
-    --v2-elevation-elements: 0px 0.5px 0.5px 0px var(--v2-alpha-dark-40);
-    --v2-elevation-switch-off:
-      inset 0px -0.5px 0px 0px var(--v2-alpha-light-10), inset 0px 0px 0px 0px var(--v2-alpha-light-0),
-      inset 0px 0px 0px 0.5px var(--v2-alpha-light-16);
-    --v2-elevation-switch-on:
-      inset 0px -0.5px 0px 0px var(--v2-alpha-light-10), inset 0px 0px 0px 0px var(--v2-alpha-light-0),
-      inset 0px 0px 0px 0.5px var(--v2-alpha-light-16);
+    --v2-elevation-raised: 0 0 0 0.5px var(--v2-alpha-light-16);
+    --v2-elevation-floating: 0 0 0 0.5px var(--v2-alpha-light-16);
+    --v2-elevation-overlay: 0 0 0 0.5px var(--v2-alpha-light-16);
+    --v2-elevation-button-neutral: 0 0 0 0.5px var(--v2-alpha-light-20);
+    --v2-elevation-button-contrast: 0 0 0 0.5px var(--v2-alpha-light-40);
+    --v2-elevation-elements: none;
+    --v2-elevation-switch-off: inset 0 0 0 0.5px var(--v2-alpha-light-16);
+    --v2-elevation-switch-on: inset 0 0 0 0.5px var(--v2-alpha-light-16);
 
     --v2-illustration-illustration-layer-01: var(--v2-grey-900);
     --v2-illustration-illustration-layer-02: var(--v2-grey-800);

@@ -2,11 +2,11 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
-import { WordmarkV2 } from "@opencode-ai/ui/v2/wordmark-v2"
 import { Show, createMemo, createSignal, type Accessor } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Portal } from "solid-js/web"
 import createPresence from "solid-presence"
+import { ASCIIText } from "@/components/ascii-text"
 import { PromptInputV2Composer } from "@/components/prompt-input-v2"
 import { PromptGitStatus, PromptWorkspaceSelector } from "@/components/prompt-workspace-selector"
 import {
@@ -39,7 +39,9 @@ export function NewSessionView(props: {
       >
         <div class="absolute inset-x-0 top-[25.375%] flex justify-center px-6">
           <div class={NEW_SESSION_CONTENT_WIDTH}>
-            <WordmarkV2 class="h-auto w-full text-v2-background-bg-inverse" />
+            <div class="relative w-full h-[220px]" role="img" aria-label="vpscode">
+              <ASCIIText text="vpscode" enableWaves={false} asciiFontSize={6} textFontSize={240} />
+            </div>
             <div class="mt-8 flex flex-col gap-8">
               <PromptInputV2Composer controller={props.input} />
               <Show when={props.project.empty()}>

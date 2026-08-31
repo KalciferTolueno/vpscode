@@ -5,6 +5,7 @@ import {
   createSignal,
   Match,
   on,
+  onCleanup,
   onMount,
   Show,
   Switch,
@@ -39,6 +40,7 @@ import type { PromptSession } from "@/context/prompt"
 import "./titlebar.css"
 import { newTabTooltipKeybind } from "./command-tooltip-keybind"
 import { normalizeSessionInfo } from "@/utils/session"
+import { projectScopeDirectories } from "@/utils/project-tabs"
 
 const legacyTitlebarHeight = 40
 const v2TitlebarHeight = 36
@@ -56,6 +58,15 @@ export function useTitlebarRightMount() {
   const language = useLanguage()
   const [mount, setMount] = createSignal<HTMLElement | null>(null)
   const sync = () => setMount(document.getElementById("opencode-titlebar-right"))
+  onMount(sync)
+  createEffect(on(language.direction, sync, { defer: true }))
+  return mount
+}
+
+export function useTitlebarProjectNavMount() {
+  const language = useLanguage()
+  const [mount, setMount] = createSignal<HTMLElement | null>(null)
+  const sync = () => setMount(document.getElementById("opencode-titlebar-project-nav"))
   onMount(sync)
   createEffect(on(language.direction, sync, { defer: true }))
   return mount
@@ -81,6 +92,13 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
   const web = createMemo(() => platform.platform === "web")
   const macTrafficLights = createMemo(() => mac() && !platform.windowFullscreen?.())
   const zoom = () => platform.webviewZoom?.() ?? 1
+
+  onMount(() => {
+    const id = window.setTimeout(() => {
+      void import("@/pages/session")
+    }, 400)
+    onCleanup(() => clearTimeout(id))
+  })
   const titlebarZoom = () => (windows() ? Math.max(zoom(), minTitlebarZoom) : zoom())
   const counterZoom = () => (windows() && titlebarZoom() < 1 ? 1 / titlebarZoom() : 1)
   const minHeight = () => {
@@ -237,6 +255,29 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
 
             const currentTab = () => matchRoute(layout.route())
 
+            const projectServer = () => {
+              const route = layout.route()
+              if (route.type === "home") return
+              return tabs.projectScope.server ?? currentTab()?.server ?? route.server ?? server.key
+            }
+
+            const projectDirectories = () => {
+              const route = layout.route()
+              if (route.type === "home") return
+              const tab = currentTab()
+              const directory =
+                (tab?.type === "draft" ? tab.directory : undefined) ??
+                (tab?.type === "session" ? tabs.info[tabKey(tab)]?.directory : undefined) ??
+                (route.type === "dir-new-sesssion" ? route.dir : undefined)
+              const scoped = tabs.projectScope.directories
+              const source = scoped?.[0] ?? directory
+              if (!source) return scoped
+              const projects = global.servers
+                .list()
+                .flatMap((conn) => global.ensureServerCtx(conn).projects.list())
+              return projectScopeDirectories(source, projects)
+            }
+
             createEffect(() => {
               const route = layout.route()
               if (!tabs.ready()) return
@@ -252,6 +293,8 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                 const sessionId = s.parentID ?? s.id
                 const next = { server: route.server ?? server.key, sessionId }
                 tabsStoreActions.addSessionTab(next)
+                tabs.rememberTabDirectory({ type: "session", ...next }, s.directory)
+                tabs.setProjectScope({ server: next.server, directories: [s.directory] })
               }
             })
 
@@ -372,6 +415,7 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                 <Show when={windows() || linux()}>
                   <WindowsAppMenu command={command} platform={platform} variant="v2" />
                 </Show>
+                <div id="opencode-titlebar-project-nav" class="flex shrink-0 items-center empty:hidden" />
                 <TooltipV2
                   placement="bottom"
                   value={
@@ -398,6 +442,8 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                 <TitlebarTabStrip
                   tabs={tabsStore}
                   currentTab={currentTab}
+                  projectDirectories={projectDirectories}
+                  projectServer={projectServer}
                   forceTruncate={tabsAreOverflowing()}
                   onOverflowChange={setTabsAreOverflowing}
                   onNavigate={(tab, el) => {

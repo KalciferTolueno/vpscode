@@ -1,146 +1,16 @@
-import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
+import { For, Show, createEffect, createSignal, onCleanup } from "solid-js"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { useLanguage } from "@/context/language"
+import { previewIframeSrc } from "./preview-url"
 
 const STORAGE_PREFIX = "opencode.preview.url"
 const DEFAULT_URL = ""
 const COMMON_PORTS = [3000, 5000, 5173, 8000, 8080, 4173, 4200]
 
-// Injected into the preview iframe: captures console errors/warnings, uncaught
-// errors/rejections and failed resource loads, reporting each to the parent.
-const CONSOLE_SCRIPT = `
-(function(){
-  if (window.__ocCon) return
-  window.__ocCon = true
-  function send(level, text, source){
-    try {
-      parent.postMessage({ type: "opencode-preview-console", level: level, text: String(text).slice(0, 500), source: source || "" }, window.location.origin)
-    } catch(e){}
-  }
-  try {
-    var ce = console.error
-    var cw = console.warn
-    console.error = function(){ send("error", Array.prototype.map.call(arguments, String).join(" "), "console.error"); ce.apply(console, arguments) }
-    console.warn = function(){ send("warn", Array.prototype.map.call(arguments, String).join(" "), "console.warn"); cw.apply(console, arguments) }
-    window.addEventListener("error", function(e){
-      var t = e.target
-      if (t && t !== window && t.tagName && (t.tagName === "IMG" || t.tagName === "SCRIPT" || t.tagName === "LINK" || t.tagName === "VIDEO" || t.tagName === "AUDIO")){
-        send("error", "Recurso fallido: " + (t.src || t.href || t.tagName), "network")
-      } else {
-        send("error", e.message || "Error", "window.onerror")
-      }
-    }, true)
-    window.addEventListener("unhandledrejection", function(e){
-      send("error", (e.reason && e.reason.message) ? e.reason.message : String(e.reason || "rechazada"), "promise")
-    })
-  } catch(e){}
-})()
-`
-
-// Runs inside the preview iframe: hover-highlight + click-capture, then reports
-// the selected element to the parent via postMessage. Self-contained so it
-// survives Solid re-renders.
-const PICKER_SCRIPT = `
-(function(){
-  if (window.__ocPickActive) return
-  window.__ocPickActive = true
-  var style = document.createElement("style")
-  style.id = "__opencode_pick_style__"
-  style.textContent = "html.__ocPick, html.__ocPick *{cursor:crosshair!important}"
-  document.head.appendChild(style)
-  document.documentElement.classList.add("__ocPick")
-  var hovered
-  function reset(el){
-    if(!el) return
-    el.style.outline = el.dataset.ocPrevO || ""
-    el.style.outlineOffset = el.dataset.ocPrevOf || ""
-    delete el.dataset.ocPrevO
-    delete el.dataset.ocPrevOf
-  }
-  function find(el){
-    if(hovered === el) return
-    reset(hovered)
-    hovered = el
-    el.dataset.ocPrevO = el.style.outline
-    el.dataset.ocPrevOf = el.style.outlineOffset
-    el.style.outline = "2px solid #f9825c"
-    el.style.outlineOffset = "1px"
-  }
-  function path(el){
-    var parts = []
-    var n = el
-    while(n && n.nodeType === 1 && parts.length < 5){
-      if(n.id){ parts.unshift("#" + n.id); break }
-      var s = n.tagName.toLowerCase()
-      var p = n.parentElement
-      if(p){
-        var sibs = Array.prototype.filter.call(p.children, function(c){ return c.tagName === n.tagName })
-        if(sibs.length > 1) s += ":nth-of-type(" + (sibs.indexOf(n) + 1) + ")"
-      }
-      parts.unshift(s)
-      n = p
-    }
-    return parts.join(" > ")
-  }
-  function summary(el){
-    var tag = el.tagName.toLowerCase()
-    var id = el.id ? "#" + el.id : ""
-    var cls = Array.prototype.slice.call(el.classList, 0, 3).map(function(c){ return "." + c }).join("")
-    var text = (el.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 40)
-    return "<" + tag + id + cls + ">" + (text ? ' "' + text + '"' : "")
-  }
-  function done(picked, el){
-    document.removeEventListener("mousemove", onMove, true)
-    document.removeEventListener("click", onClick, true)
-    document.removeEventListener("keydown", onKey, true)
-    reset(hovered)
-    style.remove()
-    document.documentElement.classList.remove("__ocPick")
-    window.__ocPickActive = false
-    delete window.__ocPickCancel
-    parent.postMessage({
-      type: "opencode-preview-pick",
-      picked: picked,
-      summary: picked && el ? summary(el) + " — css: " + path(el) : null,
-    }, window.location.origin)
-  }
-  window.__ocPickCancel = function(){ done(false, null) }
-  function onMove(e){ if(e.target instanceof HTMLElement) find(e.target) }
-  function onClick(e){
-    e.preventDefault()
-    e.stopPropagation()
-    done(true, e.target instanceof Element ? e.target : null)
-  }
-  function onKey(e){ if(e.key === "Escape") done(false, null) }
-  document.addEventListener("mousemove", onMove, true)
-  document.addEventListener("click", onClick, true)
-  document.addEventListener("keydown", onKey, true)
-})()
-`
-
-function normalizePreviewUrl(value: string) {
-  let next = value.trim()
-  if (!next) return next
-  if (next.startsWith("/")) {
-    // Resolve a root-relative route (the agent publishes /preview/<port>/) against
-    // the proxy's own origin so the bar shows a full, copy-pasteable URL.
-    try {
-      return new URL(next, location.origin).toString()
-    } catch {
-      return next
-    }
-  }
-  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(next)) next = `https://${next}`
-  return next
-}
-
-// Per-tab registry so the outside world (the .opencode/preview watcher) can
-// target a specific session + browser tab's URL. Keyed by `${sessionKey}.${tabId}`
-// so each chat/project keeps its own browser independently.
 const registries = new Map<string, { set(value: string): void }>()
 
 export function setPreviewUrlFor(sessionKey: string, tabId: string, value: string) {
-  const next = normalizePreviewUrl(value)
+  const next = previewIframeSrc(value)
   if (!next) return
   try {
     localStorage.setItem(`${STORAGE_PREFIX}.${sessionKey}.${tabId}`, next)
@@ -151,15 +21,16 @@ export function setPreviewUrlFor(sessionKey: string, tabId: string, value: strin
 function initialUrl(sessionKey: string, tabId: string) {
   if (typeof localStorage === "undefined") return DEFAULT_URL
   try {
-    return normalizePreviewUrl(localStorage.getItem(`${STORAGE_PREFIX}.${sessionKey}.${tabId}`) ?? DEFAULT_URL)
+    const key = `${STORAGE_PREFIX}.${sessionKey}.${tabId}`
+    const stored = localStorage.getItem(key) ?? DEFAULT_URL
+    const next = previewIframeSrc(stored)
+    if (stored && !next) localStorage.removeItem(key)
+    return next
   } catch {
     return DEFAULT_URL
   }
 }
 
-// Inserts a compact, expandable element chip into the prompt editor. The full
-// detail stays in the DOM (so the LLM receives it on submit) but is collapsed
-// visually to one line; clicking it expands/collapses.
 function insertElementChip(fullText: string) {
   const editor = document.querySelector<HTMLElement>('[data-component="prompt-input"][contenteditable="true"]')
   if (!editor) return false
@@ -196,199 +67,201 @@ function insertElementChip(fullText: string) {
   range.collapse(true)
   selection?.removeAllRanges()
   selection?.addRange(range)
-  // Sync the prompt store (parses the DOM, keeping the chip's full text).
   editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: fullText }))
   return true
 }
 
-const WIDTHS = [
-  { view: "100%", key: "desktop", icon: "layout-right" },
-  { view: "768px", key: "tablet", icon: "layout-right-partial" },
-  { view: "390px", key: "mobile", icon: "layout-right" },
+const PRESETS = [
+  { key: "desktop", icon: "layout-right", width: 0, height: 0 },
+  { key: "tablet", icon: "layout-right-partial", width: 768, height: 1024 },
+  { key: "mobile", icon: "layout-right", width: 390, height: 844 },
 ] as const
 
-type ConsoleEntry = { level: "error" | "warn"; text: string; source: string; ts: number }
+type ConsoleEntry = { level: "error" | "warn" | "log"; text: string; source: string; ts: number }
+
+function consoleLevel(level: string) {
+  if (level === "warn") return "warn"
+  if (level === "error") return "error"
+  return "log"
+}
+
+function consoleMark(level: ConsoleEntry["level"]) {
+  if (level === "error") return { class: "text-text-on-critical-base", mark: "✕" }
+  if (level === "warn") return { class: "text-text-weak", mark: "⚠" }
+  return { class: "text-text-base", mark: "·" }
+}
+
+function openUrl(value: string) {
+  const src = previewIframeSrc(value)
+  if (!src) return
+  window.open(new URL(src, location.origin).toString(), "_blank", "noopener")
+}
 
 export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) {
   const language = useLanguage()
   const [url, setUrl] = createSignal(initialUrl(props.sessionKey, props.tabId))
   const [draft, setDraft] = createSignal(url())
-  const [nonce, setNonce] = createSignal(0)
+  const [iframeSrc, setIframeSrc] = createSignal(previewIframeSrc(url()))
   const [picking, setPicking] = createSignal(false)
-  const [hist, setHist] = createSignal<string[]>([url()])
-  const [histIdx, setHistIdx] = createSignal(0)
-  const [width, setWidth] = createSignal("100%")
+  const [canBack, setCanBack] = createSignal(false)
+  const [canForward, setCanForward] = createSignal(false)
+  const [preset, setPreset] = createSignal<(typeof PRESETS)[number]["key"]>("desktop")
   const [consoleOpen, setConsoleOpen] = createSignal(false)
   const [consoleEntries, setConsoleEntries] = createSignal<ConsoleEntry[]>([])
-  const [alivePorts, setAlivePorts] = createSignal<number[]>([])
-  let iframe: HTMLIFrameElement | undefined
+  let frame: HTMLIFrameElement | undefined
   let eCurrent: HTMLInputElement | undefined
-  let reloadTimer: number | undefined
+  let history = url() ? [url()] : []
+  let historyIndex = url() ? 0 : -1
+  let skipRecord = false
 
   const registriesKey = `${props.sessionKey}.${props.tabId}`
-  registries.set(registriesKey, { set: setUrl })
+  registries.set(registriesKey, { set: (value) => navigate(value) })
   onCleanup(() => {
     registries.delete(registriesKey)
   })
 
-  // Keep the address bar in sync when the URL is set externally (the agent).
   createEffect(() => setDraft(url()))
 
-  // A0 — live reload: poll the served page's Last-Modified/ETag and reload the
-  // iframe when it changes. Works for any static server (python -m http.server)
-  // without relying on framework HMR or watcher events.
-  const queueReload = () => {
-    if (reloadTimer) clearTimeout(reloadTimer)
-    reloadTimer = window.setTimeout(() => setNonce((n) => n + 1), 400)
-  }
-  createEffect(() => {
-    const base = url()
-    if (!base) return
-    let same = false
-    try {
-      same = new URL(base, location.origin).origin === location.origin
-    } catch {
-      same = false
-    }
-    if (!same) return
-    let last: string | null = null
-    let first = true
-    const iv = window.setInterval(async () => {
-      try {
-        const res = await fetch(base, { method: "HEAD", cache: "no-store" })
-        const lm =
-          res.headers.get("last-modified") ?? res.headers.get("etag") ?? res.headers.get("content-length") ?? ""
-        if (!first && lm && lm !== last) queueReload()
-        last = lm
-        first = false
-      } catch {
-        last = null
-      }
-    }, 1600)
-    return () => window.clearInterval(iv)
-  })
-
-  // A3 — probe which common dev ports are alive and suggest only those.
-  createEffect(() => {
-    const base = url()
-    if (!base) return
-    let cancelled = false
-    void (async () => {
-      const results = await Promise.all(
-        COMMON_PORTS.map(async (p) => {
-          try {
-            const ctrl = new AbortController()
-            const t = window.setTimeout(() => ctrl.abort(), 1500)
-            const res = await fetch(`${location.origin}/preview/${p}/`, { cache: "no-store", signal: ctrl.signal })
-            window.clearTimeout(t)
-            return res.ok ? p : null
-          } catch {
-            return null
-          }
-        }),
-      )
-      if (!cancelled) setAlivePorts(results.filter((x): x is number => x !== null))
-    })()
-    return () => {
-      cancelled = true
-    }
-  })
-
-  const pushHist = (v: string) => {
-    const next = [...hist().slice(0, histIdx() + 1), v]
-    setHist(next)
-    setHistIdx(next.length - 1)
-  }
-
-  const goBack = () => {
-    const i = histIdx()
-    if (i <= 0) return
-    const v = hist()[i - 1]
-    setHistIdx(i - 1)
-    setDraft(v)
-    setUrl(v)
-    setNonce((n) => n + 1)
-  }
-
-  const goForward = () => {
-    const i = histIdx()
-    if (i >= hist().length - 1) return
-    const v = hist()[i + 1]
-    setHistIdx(i + 1)
-    setDraft(v)
-    setUrl(v)
-    setNonce((n) => n + 1)
-  }
-
-  const setCurrent = (value: string) => {
-    const next = normalizePreviewUrl(value)
-    if (!next) return
-    if (next !== url()) pushHist(next)
-    setDraft(next)
-    setUrl(next)
-    setNonce((n) => n + 1)
+  const persist = (next: string) => {
     try {
       localStorage.setItem(`${STORAGE_PREFIX}.${props.sessionKey}.${props.tabId}`, next)
     } catch {}
   }
 
+  const syncHistoryButtons = () => {
+    setCanBack(historyIndex > 0)
+    setCanForward(historyIndex >= 0 && historyIndex < history.length - 1)
+  }
+
+  const navigate = (value: string) => {
+    const next = previewIframeSrc(value)
+    if (!next) return
+    setDraft(next)
+    setUrl(next)
+    setIframeSrc(previewIframeSrc(next))
+    history = [next]
+    historyIndex = 0
+    skipRecord = false
+    syncHistoryButtons()
+    persist(next)
+  }
+
   const commit = () => {
     const value = draft().trim()
-    if (!value) {
+    if (!previewIframeSrc(value)) {
       setDraft(url())
       return
     }
-    setCurrent(value)
+    navigate(value)
     eCurrent?.blur()
   }
 
-  const src = createMemo(() => {
-    const base = url()
-    if (!base) return "about:blank"
-    return nonce() ? `${base}${base.includes("?") ? "&" : "?"}_r=${nonce()}` : base
-  })
+  const postPick = (enabled: boolean) => {
+    frame?.contentWindow?.postMessage({ type: "opencode-preview-pick", enabled }, location.origin)
+  }
 
-  const sameOrigin = () => {
+  const recordLocation = () => {
+    if (!frame) return
     try {
-      return new URL(src(), location.origin).origin === location.origin
+      const loc = frame.contentWindow?.location
+      if (!loc) return
+      const next = `${loc.pathname}${loc.search}${loc.hash}`
+      if (!next.startsWith("/preview/") && loc.origin !== location.origin) return
+      const path = next.startsWith("/") ? next : url()
+      if (!path) return
+      setUrl(path)
+      setDraft(path)
+      persist(path)
+      if (skipRecord) {
+        skipRecord = false
+        return
+      }
+      if (history[historyIndex] === path) return
+      history = history.slice(0, historyIndex + 1)
+      history.push(path)
+      historyIndex = history.length - 1
+      syncHistoryButtons()
+    } catch {}
+  }
+
+  const goHistory = (delta: number) => {
+    const next = historyIndex + delta
+    if (next < 0 || next >= history.length) return
+    skipRecord = true
+    historyIndex = next
+    syncHistoryButtons()
+    frame?.contentWindow?.history.go(delta)
+  }
+
+  const reload = () => {
+    try {
+      frame?.contentWindow?.location.reload()
     } catch {
-      return false
+      const current = iframeSrc()
+      if (current) setIframeSrc("")
+      requestAnimationFrame(() => setIframeSrc(current))
     }
   }
 
-  const injectConsole = () => {
-    if (!sameOrigin()) return
-    const doc = iframe?.contentDocument
-    if (!doc || (iframe?.contentWindow as (Window & { __ocCon?: boolean }) | null)?.__ocCon) return
-    const script = doc.createElement("script")
-    script.textContent = CONSOLE_SCRIPT
-    doc.head.appendChild(script)
-    script.remove()
+  const onFrameLoad = () => {
+    recordLocation()
+    if (picking()) postPick(true)
   }
 
-  const togglePick = () => {
-    const doc = iframe?.contentDocument
-    if (!doc) return
-    if (picking()) {
-      ;(iframe?.contentWindow as (Window & { __ocPickCancel?: () => void }) | null)?.__ocPickCancel?.()
+  const onWindowMessage = (event: MessageEvent) => {
+    if (event.origin !== location.origin) return
+    const data = event.data as {
+      type?: string
+      level?: string
+      text?: string
+      source?: string
+      summary?: string
+      picked?: boolean
+    }
+    if (!data || typeof data !== "object") return
+    if (data.type === "opencode-preview-console" && data.text) {
+      const entry: ConsoleEntry = {
+        level: consoleLevel(data.level ?? ""),
+        text: data.text,
+        source: data.source ?? "",
+        ts: Date.now(),
+      }
+      setConsoleEntries((list) => {
+        const next = [...list, entry]
+        return next.length > 100 ? next.slice(-100) : next
+      })
       return
     }
-    const script = doc.createElement("script")
-    script.textContent = PICKER_SCRIPT
-    doc.head.appendChild(script)
-    script.remove()
-    setPicking(true)
+    if (data.type === "opencode-preview-pick") {
+      setPicking(false)
+      if (data.picked && data.summary) {
+        insertElementChip(` [${language.t("session.preview.element")}: ${data.summary}] `)
+      }
+    }
+  }
+  window.addEventListener("message", onWindowMessage)
+  onCleanup(() => window.removeEventListener("message", onWindowMessage))
+
+  const currentPreset = () => PRESETS.find((item) => item.key === preset()) ?? PRESETS[0]
+
+  const frameStyle = () => {
+    const next = currentPreset()
+    if (!next.width) return { width: "100%", height: "100%" }
+    return {
+      width: `${next.width}px`,
+      height: `${next.height}px`,
+      "max-width": "100%",
+      "max-height": "100%",
+      "aspect-ratio": `${next.width} / ${next.height}`,
+    }
   }
 
   const cycleWidth = () => {
-    const idx = WIDTHS.findIndex((w) => w.view === width())
-    setWidth(WIDTHS[(idx + 1) % WIDTHS.length].view)
+    const idx = PRESETS.findIndex((item) => item.key === preset())
+    setPreset(PRESETS[(idx + 1) % PRESETS.length].key)
   }
 
-  const widthLabel = () => {
-    const w = WIDTHS.find((x) => x.view === width())
-    return w ? language.t(`session.preview.responsive.${w.key}`) : ""
-  }
+  const widthLabel = () => language.t(`session.preview.responsive.${currentPreset().key}`)
 
   const errorCount = () => consoleEntries().filter((e) => e.level === "error").length
 
@@ -401,40 +274,6 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
     )
   }
 
-  const onMessage = (event: MessageEvent) => {
-    if (event.origin !== location.origin) return
-    const data = event.data as {
-      type?: string
-      picked?: boolean
-      summary?: string | null
-      level?: string
-      text?: string
-      source?: string
-    }
-    if (data?.type === "opencode-preview-pick") {
-      setPicking(false)
-      if (data.picked && data.summary) {
-        insertElementChip(` [${language.t("session.preview.element")}: ${data.summary}] `)
-      }
-      return
-    }
-    if (data?.type === "opencode-preview-console" && data.text) {
-      const entry: ConsoleEntry = {
-        level: data.level === "warn" ? "warn" : "error",
-        text: data.text,
-        source: data.source ?? "",
-        ts: Date.now(),
-      }
-      setConsoleEntries((list) => {
-        const next = [...list, entry]
-        return next.length > 100 ? next.slice(-100) : next
-      })
-    }
-  }
-  window.addEventListener("message", onMessage)
-  onCleanup(() => window.removeEventListener("message", onMessage))
-
-  // A4 — keyboard shortcuts in the browser tab (don't hijack the chat).
   const onWindowKey = (event: KeyboardEvent) => {
     if (!(event.metaKey || event.ctrlKey)) return
     const t = event.target as HTMLElement | null
@@ -442,7 +281,7 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
     const key = event.key.toLowerCase()
     if (key === "r" && !editable) {
       event.preventDefault()
-      setNonce((n) => n + 1)
+      reload()
     } else if (key === "l" && !editable) {
       event.preventDefault()
       eCurrent?.focus()
@@ -452,8 +291,6 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
   window.addEventListener("keydown", onWindowKey)
   onCleanup(() => window.removeEventListener("keydown", onWindowKey))
 
-  const portOptions = createMemo(() => (alivePorts().length ? alivePorts() : COMMON_PORTS))
-
   return (
     <div data-component="session-preview" class="flex flex-col h-full min-h-0 bg-v2-background-bg-base">
       <div class="flex items-center gap-1 px-2 py-2 border-b border-v2-border-border-base shrink-0 bg-v2-background-bg-base">
@@ -461,23 +298,24 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
           icon="arrow-left"
           variant="ghost"
           class="h-6 w-6"
-          disabled={histIdx() <= 0}
-          onClick={goBack}
+          disabled={!canBack()}
+          onClick={() => goHistory(-1)}
           aria-label={language.t("session.preview.back")}
         />
         <IconButton
           icon="arrow-right"
           variant="ghost"
           class="h-6 w-6"
-          disabled={histIdx() >= hist().length - 1}
-          onClick={goForward}
+          disabled={!canForward()}
+          onClick={() => goHistory(1)}
           aria-label={language.t("session.preview.forward")}
         />
         <IconButton
           icon="refresh"
           variant="ghost"
           class="h-6 w-6"
-          onClick={() => setNonce((n) => n + 1)}
+          disabled={!iframeSrc()}
+          onClick={reload}
           aria-label={language.t("session.preview.reload")}
         />
         <input
@@ -487,9 +325,7 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
           list="opencode-preview-ports"
           onInput={(e) => setDraft(e.currentTarget.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              commit()
-            }
+            if (e.key === "Enter") commit()
           }}
           onBlur={() => setDraft(url())}
           class="flex-1 min-w-0 h-7 px-2 rounded-[2px] bg-v2-background-bg-deep text-12-regular text-v2-text-text-base outline-none border border-v2-border-border-base focus:border-v2-border-border-focus"
@@ -499,12 +335,12 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
           autocomplete="off"
         />
         <datalist id="opencode-preview-ports">
-          {portOptions().map((p) => (
-            <option value={`${location.origin}/preview/${p}/`} />
+          {COMMON_PORTS.map((p) => (
+            <option value={`/preview/${p}/`} />
           ))}
         </datalist>
         <IconButton
-          icon={WIDTHS.find((w) => w.view === width())?.icon ?? "layout-right"}
+          icon={currentPreset().icon}
           variant="ghost"
           class="h-6 w-6"
           onClick={cycleWidth}
@@ -532,8 +368,12 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
           variant="ghost"
           class="h-6 w-6"
           classList={{ "!bg-v2-overlay-simple-overlay-hover": picking() }}
-          disabled={!sameOrigin()}
-          onClick={togglePick}
+          disabled={!iframeSrc()}
+          onClick={() => {
+            const next = !picking()
+            setPicking(next)
+            postPick(next)
+          }}
           aria-label={language.t("session.preview.pickElement")}
           aria-pressed={picking()}
         />
@@ -541,64 +381,65 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
           icon="square-arrow-top-right"
           variant="ghost"
           class="h-6 w-6"
-          disabled={!url()}
-          onClick={() => window.open(url(), "_blank", "noopener")}
+          disabled={!iframeSrc()}
+          onClick={() => openUrl(url())}
           aria-label={language.t("session.preview.openExternal")}
         />
       </div>
-      <div class="flex-1 min-h-0 grid place-items-center overflow-hidden bg-v2-background-bg-deep">
-        <Show
-          when={url()}
-          fallback={
-            <div class="flex items-center justify-center text-center px-6 text-12-regular text-text-weak">
-              {language.t("session.preview.empty")}
+      <div class="flex-1 min-h-0 relative overflow-hidden bg-v2-background-bg-deep">
+        <div class="absolute inset-0 grid place-items-center overflow-hidden">
+          <div class="border-0 bg-white relative overflow-hidden" style={frameStyle()}>
+            <Show
+              when={iframeSrc()}
+              fallback={
+                <div class="absolute inset-0 flex items-center justify-center text-center px-6 text-12-regular text-text-weak">
+                  {language.t("session.preview.empty")}
+                </div>
+              }
+            >
+              <iframe
+                ref={(el) => (frame = el)}
+                src={iframeSrc()}
+                class="h-full w-full border-0 bg-white"
+                title={language.t("session.tab.browser")}
+                onLoad={onFrameLoad}
+              />
+            </Show>
+          </div>
+        </div>
+        <Show when={consoleOpen()}>
+          <div class="absolute inset-x-0 bottom-0 z-20 max-h-48 overflow-auto border-t border-border-weaker-base bg-background-stronger/95 px-2 py-1.5 space-y-0.5 font-mono text-11-regular">
+            <div class="sticky top-0 flex items-center justify-between bg-background-stronger pb-1 text-12-medium text-text-weak">
+              <span>{language.t("session.preview.console")}</span>
+              <IconButton
+                icon="prompt"
+                variant="ghost"
+                class="h-6 w-6"
+                disabled={!consoleEntries().length}
+                onClick={sendErrors}
+                aria-label={language.t("prompt.action.send")}
+              />
             </div>
-          }
-        >
-          <iframe
-            ref={(el) => (iframe = el)}
-            onLoad={() => {
-              setPicking(false)
-              injectConsole()
-            }}
-            class="h-full border-0 bg-white"
-            style={{ width: width() }}
-            src={src()}
-            title={language.t("session.tab.browser")}
-          />
+            <For
+              each={consoleEntries()}
+              fallback={
+                <div class="text-12-regular text-text-weak py-1">{language.t("session.preview.consoleEmpty")}</div>
+              }
+            >
+              {(entry) => {
+                const mark = consoleMark(entry.level)
+                return (
+                  <div class="flex gap-2 items-start">
+                    <span class={mark.class}>{mark.mark}</span>
+                    <span class="text-text-base break-all">{entry.text}</span>
+                    <span class="text-text-weak ml-auto shrink-0">{entry.source}</span>
+                  </div>
+                )
+              }}
+            </For>
+          </div>
         </Show>
       </div>
-      <Show when={consoleOpen()}>
-        <div class="shrink-0 max-h-40 overflow-auto border-t border-border-weaker-base bg-background-stronger px-2 py-1.5 space-y-0.5 font-mono text-11-regular">
-          <div class="sticky top-0 flex items-center justify-between bg-background-stronger pb-1 text-12-medium text-text-weak">
-            <span>{language.t("session.preview.console")}</span>
-            <IconButton
-              icon="prompt"
-              variant="ghost"
-              class="h-6 w-6"
-              disabled={!consoleEntries().length}
-              onClick={sendErrors}
-              aria-label={language.t("prompt.action.send")}
-            />
-          </div>
-          <For
-            each={consoleEntries()}
-            fallback={
-              <div class="text-12-regular text-text-weak py-1">{language.t("session.preview.consoleEmpty")}</div>
-            }
-          >
-            {(entry) => (
-              <div class="flex gap-2 items-start">
-                <span class={entry.level === "error" ? "text-text-on-critical-base" : "text-text-weak"}>
-                  {entry.level === "error" ? "✕" : "⚠"}
-                </span>
-                <span class="text-text-base break-all">{entry.text}</span>
-                <span class="text-text-weak ml-auto shrink-0">{entry.source}</span>
-              </div>
-            )}
-          </For>
-        </div>
-      </Show>
     </div>
   )
 }

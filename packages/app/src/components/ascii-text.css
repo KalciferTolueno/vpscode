@@ -1,0 +1,29 @@
+.ascii-text-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ascii-text-container canvas {
+  display: none;
+}
+
+.ascii-text-container pre {
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  white-space: pre;
+  line-height: 1em;
+  letter-spacing: 0;
+  text-align: left;
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  overflow: hidden;
+  color: var(--v2-background-bg-inverse);
+  opacity: 0.72;
+  font-variant-ligatures: none;
+}

@@ -8,7 +8,7 @@ export { SESSION_OPEN_FILE_TAB } from "@/context/layout-tabs"
 
 const emptyTabs: string[] = []
 
-const isBrowserTab = (tab: string) => tab === "browser" || tab.startsWith("browser:")
+export const isBrowserTab = (tab: string) => tab === "browser" || tab.startsWith("browser:")
 
 type Tabs = {
   active: Accessor<string | undefined>
@@ -75,6 +75,7 @@ export const createSessionTabs = (input: TabsInput) => {
     if (first) return first
     if (contextOpen()) return "context"
     if (browserOpen()) return browserTabs()[0]
+    if (fileBrowser()) return SESSION_OPEN_FILE_TAB
     if (review() && hasReview()) return "review"
     return "empty"
   })
@@ -87,7 +88,8 @@ export const createSessionTabs = (input: TabsInput) => {
     const active = activeTab()
     if (active === "context") return active
     if (active && isBrowserTab(active)) return active
-    if (active === SESSION_OPEN_FILE_TAB && openFileOpen()) return active
+    if (active === SESSION_OPEN_FILE_TAB && fileBrowser()) return active
+    if (active === "review" && review()) return active
     if (!openedTabs().includes(active)) return
     return active
   })

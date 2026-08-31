@@ -78,9 +78,12 @@ import { useSessionLayout } from "@/pages/session/session-layout"
 import { restorePromptModel, syncPromptModel, syncSessionModel } from "@/pages/session/session-model-helpers"
 import {
   clampSessionPanelWidth,
+  SESSION_LAYOUT_GAP,
   SESSION_PANEL_WIDTH_MIN,
+  sessionPanelAvailableWidth,
   sessionPanelWidthMax,
 } from "@/pages/session/session-panel-width"
+import { SessionProjectNav } from "@/pages/session/project-nav"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { sessionPanelLayout } from "@/pages/session/session-panel-layout"
 import { SessionReviewEmptyChangesV2 } from "@opencode-ai/session-ui/v2/session-review-empty-changes-v2"
@@ -186,7 +189,7 @@ export function SessionRouteErrorBoundary(
       fallback={(error) =>
         settings.general.newLayoutDesigns() ? (
           <SessionRouteFrame padded={props.padded}>
-            <SessionPanelFrame newLayout raised={!!props.sessionID}>
+            <SessionPanelFrame newLayout>
               <SessionErrorFallback error={error} sessionID={props.sessionID} serverKey={props.serverKey} />
             </SessionPanelFrame>
           </SessionRouteFrame>
@@ -338,7 +341,7 @@ function SessionRouteFrame(props: ParentProps<{ padded?: boolean }>) {
   )
 }
 
-function SessionPanelFrame(props: ParentProps<{ newLayout: boolean; raised?: boolean }>) {
+function SessionPanelFrame(props: ParentProps<{ newLayout: boolean }>) {
   return (
     <div
       data-slot="agent-studio-panel"
@@ -347,7 +350,6 @@ function SessionPanelFrame(props: ParentProps<{ newLayout: boolean; raised?: boo
         "bg-v2-background-bg-base": props.newLayout,
         "bg-background-stronger": !props.newLayout,
         "rounded-[3px] border border-v2-border-border-base overflow-hidden": props.newLayout,
-        "shadow-[var(--v2-elevation-raised)]": props.newLayout && props.raised,
       }}
     >
       {props.children}
@@ -376,7 +378,7 @@ export default function Page() {
   const location = useLocation()
   const navigate = useNavigate()
   const { params, sessionKey, workspaceKey, tabs, view } = useSessionLayout()
-  const reviewMode = () => view().review.mode() ?? "git"
+  const reviewMode = () => view().review.mode() ?? "files"
   const reviewFile = () => view().review.file()
   const sessionOwnership = createSessionOwnership(sessionKey)
   const newSessionDesign = createMemo(() => settings.general.newLayoutDesigns())
@@ -456,9 +458,6 @@ export default function Page() {
   const desktopV2ReviewOpen = createMemo(() => newSessionDesign() && desktopReviewOpen() && !!params.id)
   const terminalOpen = createMemo(() => view().terminal.opened())
   const desktopTerminalOpen = createMemo(() => isDesktop() && terminalOpen())
-  const desktopInlineTerminalOnlyOpen = createMemo(
-    () => newSessionDesign() && desktopTerminalOpen() && !desktopV2ReviewOpen(),
-  )
   const desktopFileTreeOpen = createMemo(
     () =>
       isDesktop() &&
@@ -472,20 +471,29 @@ export default function Page() {
   )
   const desktopSidePanelOpen = createMemo(() => desktopSessionResizeOpen() || desktopFileTreeOpen())
   let panelRow: HTMLDivElement | undefined
+  let projectNav: HTMLElement | undefined
   const [panelRowWidth, setPanelRowWidth] = createSignal<number>()
+  const [projectNavWidth, setProjectNavWidth] = createSignal(0)
   createResizeObserver(
     () => panelRow,
     ({ width }) => setPanelRowWidth(width),
   )
+  createResizeObserver(
+    () => projectNav,
+    ({ width }) => setProjectNavWidth(width),
+  )
   const splitReview = createMemo(
     () => (newSessionDesign() ? desktopV2ReviewOpen() : desktopReviewOpen()) && layout.review.diffStyle() === "split",
   )
-  // The observer reports the content-box width, which already excludes the row
-  // padding; only the flex gap between the panels remains to subtract.
   const sessionPanelAvailable = createMemo(() => {
     const width = panelRowWidth()
     if (width === undefined) return undefined
-    return width - (settings.general.newLayoutDesigns() ? 12 : 0)
+    return sessionPanelAvailableWidth({
+      row: width,
+      nav: newSessionDesign() && isDesktop() ? projectNavWidth() : 0,
+      sidePanel: desktopSidePanelOpen(),
+      gap: settings.general.newLayoutDesigns() ? SESSION_LAYOUT_GAP : 0,
+    })
   })
   const sessionPanelMax = createMemo(() => {
     const available = sessionPanelAvailable()
@@ -501,10 +509,15 @@ export default function Page() {
       split: splitReview(),
     }),
   )
+  const sessionPanelFillsRow = createMemo(() => newSessionDesign() && isDesktop() && !desktopSidePanelOpen())
   const sessionPanelWidth = createMemo(() => {
+    if (sessionPanelFillsRow()) return undefined
     if (!desktopSidePanelOpen()) return "100%"
     if (desktopSessionResizeOpen()) return `${sessionPanelResizedWidth()}px`
-    return `calc(100% - ${layout.fileTree.width()}px)`
+    const available = sessionPanelAvailable()
+    const fileTree = layout.fileTree.width()
+    if (available === undefined) return `calc(100% - ${fileTree}px)`
+    return `${Math.max(0, available - fileTree)}px`
   })
   const centered = createMemo(() => isDesktop() && (newSessionDesign() || !desktopReviewOpen()))
   const desktopV2PanelLayout = createMemo(() =>
@@ -546,6 +559,7 @@ export default function Page() {
     normalizeTab,
     review: reviewTab,
     hasReview: canReview,
+    fileBrowser: () => newSessionDesign() && isDesktop() && !!params.id,
   })
   const activeTab = tabState.activeTab
   const activeFileTab = tabState.activeFileTab
@@ -2275,27 +2289,38 @@ export default function Page() {
         }}
       >
         <Show when={!isDesktop() && !!params.id && !settings.general.newLayoutDesigns()}>{mobileTabs()}</Show>
+        <Show when={newSessionDesign() && isDesktop()}>
+          <SessionProjectNav
+            ref={(el) => {
+              projectNav = el
+              if (!el) setProjectNavWidth(0)
+            }}
+          />
+        </Show>
 
         <div
           classList={{
-            "@container relative shrink-0 flex flex-col min-h-0 h-full flex-1 md:flex-none transition-[width]": true,
-            "duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] motion-reduce:transition-none":
-              !size.active() && !ui.reviewSnap && !desktopInlineTerminalOnlyOpen(),
+            "@container relative flex flex-col min-h-0 h-full flex-1 min-w-0": true,
+            "shrink-0 md:flex-none": !sessionPanelFillsRow(),
           }}
-          style={{
-            width: sessionPanelWidth(),
-          }}
+          style={
+            sessionPanelWidth()
+              ? {
+                  width: sessionPanelWidth(),
+                }
+              : undefined
+          }
         >
           {settings.general.newLayoutDesigns() ? (
             <Show when={sessionPanelKey()} keyed>
               {(_) => (
-                <SessionPanelFrame newLayout raised={!!params.id}>
+                <SessionPanelFrame newLayout>
                   <ErrorBoundary fallback={sessionErrorFallback}>{sessionPanelContent()}</ErrorBoundary>
                 </SessionPanelFrame>
               )}
             </Show>
           ) : (
-            <SessionPanelFrame newLayout={false} raised={!!params.id}>
+            <SessionPanelFrame newLayout={false}>
               {sessionPanelContent()}
             </SessionPanelFrame>
           )}

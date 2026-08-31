@@ -8,8 +8,18 @@ import {
   createSessionTabs,
   focusTerminalById,
   getTabReorderIndex,
+  isBrowserTab,
   shouldShowFileTree,
 } from "./helpers"
+
+describe("isBrowserTab", () => {
+  test("matches the browser tab and numbered previews", () => {
+    expect(isBrowserTab("browser")).toBe(true)
+    expect(isBrowserTab("browser:2")).toBe(true)
+    expect(isBrowserTab("review")).toBe(false)
+    expect(isBrowserTab("open-file")).toBe(false)
+  })
+})
 
 describe("shouldShowFileTree", () => {
   test("does not reserve space for a disabled file tree", () => {
@@ -162,7 +172,30 @@ describe("createSessionTabs", () => {
 
       expect(result.activeTab()).toBe("review")
       expect(result.activeFileTab()).toBeUndefined()
-      expect(result.closableTab()).toBeUndefined()
+      expect(result.closableTab()).toBe("review")
+      dispose()
+    })
+  })
+
+  test("falls back to the file browser instead of Review", () => {
+    createRoot((dispose) => {
+      const [state] = createStore({
+        active: undefined as string | undefined,
+        all: [],
+      })
+      const tabs = createMemo(() => ({ active: () => state.active, all: () => state.all }))
+      const result = createSessionTabs({
+        tabs,
+        pathFromTab: () => undefined,
+        normalizeTab: (tab) => tab,
+        review: () => true,
+        hasReview: () => true,
+        fileBrowser: () => true,
+      })
+
+      expect(result.activeTab()).toBe(SESSION_OPEN_FILE_TAB)
+      expect(result.activeFileTab()).toBeUndefined()
+      expect(result.closableTab()).toBe(SESSION_OPEN_FILE_TAB)
       dispose()
     })
   })

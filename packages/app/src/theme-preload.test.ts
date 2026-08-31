@@ -28,10 +28,18 @@ describe("theme preload", () => {
 
     expect(document.documentElement.dataset.theme).toBe("oc-2")
     expect(document.documentElement.dataset.colorScheme).toBe("light")
+    expect(document.documentElement.style.backgroundColor).toBe("#ffffff")
     expect(localStorage.getItem("opencode-theme-id")).toBe("oc-2")
     expect(localStorage.getItem("opencode-theme-css-light")).toBeNull()
     expect(localStorage.getItem("opencode-theme-css-dark")).toBeNull()
     expect(document.getElementById("oc-theme-preload")).toBeNull()
+  })
+
+  test("paints a black canvas before mount in dark scheme", () => {
+    localStorage.setItem("opencode-color-scheme", "dark")
+    run()
+    expect(document.documentElement.dataset.colorScheme).toBe("dark")
+    expect(document.documentElement.style.backgroundColor).toBe("#000000")
   })
 
   test("keeps cached css for non-default themes", () => {

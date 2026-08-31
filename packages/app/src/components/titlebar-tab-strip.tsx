@@ -7,13 +7,13 @@ import { Accessibility, AutoScroller, Feedback, PointerActivationConstraints } f
 import { RestrictToHorizontalAxis } from "@dnd-kit/abstract/modifiers"
 import { RestrictToElement } from "@dnd-kit/dom/modifiers"
 import { arrayMove } from "@dnd-kit/helpers"
-import { tabHref, tabKey, type SessionTab, type Tab } from "@/context/tabs"
+import { tabHref, tabKey, useTabs, type SessionTab, type Tab } from "@/context/tabs"
 import { ServerConnection } from "@/context/server"
+import { tabVisibleInProject } from "@/utils/project-tabs"
 import { DraftTabItem, TabNavItem } from "@/components/titlebar-tab-nav"
 import { useGlobal, type ServerCtx } from "@/context/global"
 import { useLanguage } from "@/context/language"
 import { useCommand } from "@/context/command"
-import { useTabs } from "@/context/tabs"
 import { createTabPromptState } from "@/context/prompt"
 import { base64Encode } from "@opencode-ai/core/util/encode"
 import { showToast } from "@/utils/toast"
@@ -77,6 +77,8 @@ function SessionTabEntry(props: {
   active: () => boolean
   forceTruncate: boolean
   serverCtx: () => ServerCtx | undefined
+  projectDirectories: () => string[] | undefined
+  projectServer: () => string | undefined
   onVisibleChange: (visible: boolean) => void
   onNavigate: (element: HTMLDivElement) => void
   onClose: () => void
@@ -95,7 +97,19 @@ function SessionTabEntry(props: {
   )
   const session = createMemo(() => cachedSession() ?? loadedSession())
   const missingSession = createMemo(() => !!props.serverCtx() && !loadedSession.loading && !session())
-  const visible = createMemo(() => !!session() || missingSession() || !!persisted()?.title)
+  const belongs = createMemo(() =>
+    tabVisibleInProject({
+      tab: props.tab,
+      directories: props.projectDirectories(),
+      server: props.projectServer(),
+      info: persisted(),
+      sessionDirectory: session()?.directory,
+      current: props.active(),
+    }),
+  )
+  const visible = createMemo(
+    () => belongs() && (!!session() || missingSession() || !!persisted()?.title || !!persisted()?.directory),
+  )
   let prefetched = false
 
   const rename = async (title: string) => {
@@ -212,6 +226,8 @@ function DraftTabSlot(props: {
 export function TitlebarTabStrip(props: {
   tabs: Tab[]
   currentTab: () => Tab | undefined
+  projectDirectories: () => string[] | undefined
+  projectServer: () => string | undefined
   forceTruncate: boolean
   onNavigate: (tab: Tab, el?: HTMLDivElement) => void
   onClose: (tab: Tab) => void
@@ -225,7 +241,19 @@ export function TitlebarTabStrip(props: {
   let listRef!: HTMLDivElement
   let resizeFrame: number | undefined
   const [visibility, setVisibility] = createStore<Record<string, boolean>>({})
-  const visibleTabs = createMemo(() => props.tabs.filter((tab) => tab.type === "draft" || visibility[tabKey(tab)]))
+  const draftBelongs = (tab: Extract<Tab, { type: "draft" }>) =>
+    tabVisibleInProject({
+      tab,
+      directories: props.projectDirectories(),
+      server: props.projectServer(),
+      current: props.currentTab() === tab,
+    })
+  const visibleTabs = createMemo(() =>
+    props.tabs.filter((tab) => {
+      if (tab.type === "draft") return draftBelongs(tab)
+      return visibility[tabKey(tab)]
+    }),
+  )
   const visibleTabIds = () => visibleTabs().map(tabKey)
 
   command.register("titlebar-tab-cycle", () => [
@@ -354,6 +382,8 @@ export function TitlebarTabStrip(props: {
                       active={() => props.currentTab() === tab}
                       forceTruncate={props.forceTruncate}
                       serverCtx={serverCtx}
+                      projectDirectories={props.projectDirectories}
+                      projectServer={props.projectServer}
                       onVisibleChange={(visible) => setVisibility(id, visible)}
                       onNavigate={(element) => {
                         ref = element
@@ -365,18 +395,20 @@ export function TitlebarTabStrip(props: {
                 }
 
                 return (
-                  <DraftTabSlot
-                    tab={tab}
-                    id={id}
-                    index={visibleIndex}
-                    active={() => props.currentTab() === tab}
-                    title={language.t("command.session.new")}
-                    onNavigate={(element) => {
-                      ref = element
-                      props.onNavigate(tab, element)
-                    }}
-                    onClose={() => props.onClose(tab)}
-                  />
+                  <Show when={draftBelongs(tab)}>
+                    <DraftTabSlot
+                      tab={tab}
+                      id={id}
+                      index={visibleIndex}
+                      active={() => props.currentTab() === tab}
+                      title={language.t("command.session.new")}
+                      onNavigate={(element) => {
+                        ref = element
+                        props.onNavigate(tab, element)
+                      }}
+                      onClose={() => props.onClose(tab)}
+                    />
+                  </Show>
                 )
               }}
             </For>

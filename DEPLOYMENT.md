@@ -1,6 +1,6 @@
-# VPS Code v1.1: despliegue con Compose
+# VPS Code v1.3: despliegue con Compose
 
-Esta es la guía de despliegue para la rama `v1.1`, la versión más actualizada de VPS Code.
+Esta es la guía de despliegue para la rama `v1.3`, la versión más actualizada de VPS Code.
 
 VPS Code se despliega mediante la opción **Compose/Composer de EasyPanel**. No se debe configurar como una aplicación estática ni ejecutar únicamente el frontend: el contenedor compila y ejecuta el servidor completo de VPS Code.
 
@@ -13,7 +13,7 @@ VPS Code se despliega mediante la opción **Compose/Composer de EasyPanel**. No 
 - Proceso: `opencode serve --hostname 0.0.0.0 --port 4096`.
 - Directorio de trabajo: `/workspace`.
 
-## Funciones de v1.1
+## Funciones de v1.3
 
 - Interfaz web con marca VPS Code.
 - Chats, configuración y proyectos persistentes.
@@ -70,7 +70,7 @@ Recrear o actualizar el contenedor no elimina estos datos. Eliminar manualmente 
 
 1. Crea un servicio con la opción **Compose/Composer**.
 2. Conecta el repositorio `https://github.com/KalciferTolueno/vpscode`.
-3. Selecciona la rama `v1.1`.
+3. Selecciona la rama `v1.3`.
 4. Usa el archivo `docker-compose.yml` de la raíz.
 5. Define `OPENCODE_SERVER_PASSWORD` en las variables del servicio.
 6. Inicia el build y espera a que el contenedor quede en ejecución.
@@ -108,13 +108,13 @@ Comprueba, en este orden:
 4. El puerto de destino es el interno `4096`.
 5. El protocolo entre EasyPanel y el contenedor es `HTTP`, no `HTTPS`.
 6. `OPENCODE_SERVER_PASSWORD` existe y no está vacío.
-7. El build utiliza la rama `v1.1` y el `docker-compose.yml` de la raíz.
+7. El build utiliza la rama `v1.3` y el `docker-compose.yml` de la raíz.
 
 Si no aparece la línea de escucha, revisa el log desde el primer error. Si aparece y la prueba local responde, el problema está en la configuración del dominio o la red de EasyPanel.
 
 ## Navegador integrado
 
-Los servidores que se quieran abrir dentro de VPS Code deben escuchar en `0.0.0.0`, no solo en `127.0.0.1`.
+El navegador de la pestaña Browser es un iframe del proxy `/preview/<puerto>/`. No hace falta Chrome ni Chromium en el servidor. Los servidores de desarrollo deben escuchar en `0.0.0.0`, no solo en `127.0.0.1`.
 
 Ejemplo con Vite en el puerto `5173`:
 
@@ -133,7 +133,7 @@ Para actualizar sin perder datos:
 3. Ejecuta un nuevo build del servicio Compose.
 4. Verifica el log de escucha y el dominio.
 
-Para volver a esta versión, selecciona la rama `v1.1` o el commit `57561263d` y vuelve a desplegar. Los volúmenes pueden reutilizarse.
+Para volver a esta versión, selecciona la rama `v1.3` y vuelve a desplegar. Los volúmenes pueden reutilizarse.
 
 ## Copia de seguridad
 

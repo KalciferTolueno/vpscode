@@ -205,10 +205,6 @@ export function TerminalPanel() {
       aria-hidden={!opened()}
       inert={!opened()}
       class="relative w-full shrink-0 bg-background-stronger"
-      classList={{
-        "transition-[height] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[height] motion-reduce:transition-none":
-          !size.active(),
-      }}
       style={{ height: opened() ? `${pane()}px` : "0px" }}
     >
       <div class="hidden md:block" onPointerDown={() => size.start()}>

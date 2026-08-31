@@ -3,9 +3,31 @@ import {
   clampSessionPanelWidth,
   REVIEW_PANE_WIDTH_MIN,
   REVIEW_PANE_WIDTH_MIN_SPLIT,
+  SESSION_LAYOUT_GAP,
   SESSION_PANEL_WIDTH_MIN,
+  sessionPanelAvailableWidth,
   sessionPanelWidthMax,
 } from "./session-panel-width"
+
+describe("sessionPanelAvailableWidth", () => {
+  test("keeps the full row when the chat panel is alone", () => {
+    expect(sessionPanelAvailableWidth({ row: 1200, sidePanel: false })).toBe(1200)
+  })
+
+  test("subtracts the flex gap when a side panel is open", () => {
+    expect(sessionPanelAvailableWidth({ row: 1200, sidePanel: true })).toBe(1200 - SESSION_LAYOUT_GAP)
+  })
+
+  test("subtracts the project nav and its gap so the chat panel keeps row padding", () => {
+    expect(sessionPanelAvailableWidth({ row: 1200, nav: 48, sidePanel: false })).toBe(1200 - 48 - SESSION_LAYOUT_GAP)
+  })
+
+  test("subtracts the project nav and both gaps when a side panel is open", () => {
+    expect(sessionPanelAvailableWidth({ row: 1200, nav: 48, sidePanel: true })).toBe(
+      1200 - 48 - SESSION_LAYOUT_GAP - SESSION_LAYOUT_GAP,
+    )
+  })
+})
 
 describe("sessionPanelWidthMax", () => {
   test("reserves the unified review pane minimum", () => {

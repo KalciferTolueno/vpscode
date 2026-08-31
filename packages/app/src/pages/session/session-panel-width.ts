@@ -5,6 +5,20 @@
 export const SESSION_PANEL_WIDTH_MIN = 450
 export const REVIEW_PANE_WIDTH_MIN = 480
 export const REVIEW_PANE_WIDTH_MIN_SPLIT = 800
+export const SESSION_LAYOUT_GAP = 12
+
+// The layout row observer reports content-box width (padding already excluded).
+// Subtract the project nav, the gap after it, and the gap before a side panel.
+export function sessionPanelAvailableWidth(input: {
+  row: number
+  nav?: number
+  sidePanel: boolean
+  gap?: number
+}) {
+  const gap = input.gap ?? SESSION_LAYOUT_GAP
+  const nav = input.nav ?? 0
+  return input.row - nav - (nav > 0 ? gap : 0) - (input.sidePanel ? gap : 0)
+}
 
 export function sessionPanelWidthMax(input: { available: number; split: boolean }) {
   const pane = input.split ? REVIEW_PANE_WIDTH_MIN_SPLIT : REVIEW_PANE_WIDTH_MIN

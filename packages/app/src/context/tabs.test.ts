@@ -122,4 +122,14 @@ describe("closed tab stack", () => {
     expect(nextTabAfterClose(tabs, 1, true)).toEqual(sessionTab("c"))
     expect(nextTabAfterClose([sessionTab("a")], 0, true)).toBeNull()
   })
+
+  test("stays on tabs in the same project when closing", () => {
+    const alpha = { type: "session" as const, server, sessionId: "alpha" }
+    const beta = { type: "session" as const, server, sessionId: "beta" }
+    const alpha2 = { type: "session" as const, server, sessionId: "alpha-2" }
+    const keep = (tab: Tab) => tab.type === "session" && tab.sessionId.startsWith("alpha")
+
+    expect(nextTabAfterClose([alpha, beta, alpha2], 0, true, keep)).toEqual(alpha2)
+    expect(nextTabAfterClose([alpha, beta], 0, true, keep)).toBeNull()
+  })
 })

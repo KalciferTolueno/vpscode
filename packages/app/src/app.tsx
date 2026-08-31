@@ -65,11 +65,17 @@ import { useCheckServerHealth } from "./utils/server-health"
 import { legacySessionHref, legacySessionServer, requireServerKey, sessionHref } from "./utils/session-route"
 import { createSessionLineage } from "@/pages/session/session-lineage"
 
-import { SessionPage, SessionRouteErrorBoundary, TargetSessionRouteContent } from "@/pages/session"
 import { NewHome } from "@/pages/home"
 import { LegacyHome } from "@/pages/home/legacy-home"
 
 const NewSession = lazy(() => import("@/pages/new-session"))
+const SessionPage = lazy(() => import("@/pages/session").then((m) => ({ default: m.SessionPage })))
+const SessionRouteErrorBoundary = lazy(() =>
+  import("@/pages/session").then((m) => ({ default: m.SessionRouteErrorBoundary })),
+)
+const TargetSessionRouteContent = lazy(() =>
+  import("@/pages/session").then((m) => ({ default: m.TargetSessionRouteContent })),
+)
 
 const SessionRoute = () => {
   const settings = useSettings()

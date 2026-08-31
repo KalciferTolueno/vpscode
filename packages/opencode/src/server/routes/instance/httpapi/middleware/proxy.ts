@@ -81,6 +81,19 @@ function statusText(response: unknown) {
   return (response as { source?: Response }).source?.statusText
 }
 
+export function stripFramingHeaders(headers: Headers) {
+  headers.delete("x-frame-options")
+  const csp = headers.get("content-security-policy")
+  if (!csp) return
+  const next = csp
+    .split(";")
+    .map((item) => item.trim())
+    .filter((item) => item && !/^frame-ancestors\b/i.test(item))
+    .join("; ")
+  if (next) headers.set("content-security-policy", next)
+  else headers.delete("content-security-policy")
+}
+
 export function http(
   client: HttpClient.HttpClient,
   url: string | URL,
@@ -98,6 +111,7 @@ export function http(
     const headers = new Headers(response.headers as HeadersInit)
     headers.delete("content-encoding")
     headers.delete("content-length")
+    if (script) stripFramingHeaders(headers)
 
     // An upstream 5xx from a remote workspace sandbox arrives here as an opaque
     // status — its real cause (and log line) live only inside the sandbox. Buffer

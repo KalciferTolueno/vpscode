@@ -30,9 +30,16 @@ export function removeClosedTabs(stack: ClosedTab[], server: SessionTab["server"
   return stack.filter((entry) => entry.tab.server !== server || !removed.has(entry.tab.sessionId))
 }
 
-export function nextTabAfterClose(tabs: Tab[], index: number, active: boolean) {
+export function nextTabAfterClose(
+  tabs: Tab[],
+  index: number,
+  active: boolean,
+  keep: (tab: Tab) => boolean = () => true,
+) {
   if (!active) return undefined
-  return tabs[index + 1] ?? tabs[index - 1] ?? null
+  const after = tabs.slice(index + 1).find(keep)
+  if (after) return after
+  return tabs.slice(0, index).findLast(keep) ?? null
 }
 
 function isOpen(tabs: Tab[], tab: SessionTab) {
