@@ -46,8 +46,6 @@ export function embeddedUI(disableEmbeddedWebUi: boolean) {
   return (embeddedUIPromise ??=
     // @ts-expect-error - generated file at build time
     import("opencode-web-ui.gen.ts")
-      // source-run fallback: the generated file can also live next to this module
-      .catch(() => import("./opencode-web-ui.gen.ts"))
       .then((module) => module.default as Record<string, string>)
       .catch(() => null))
 }
