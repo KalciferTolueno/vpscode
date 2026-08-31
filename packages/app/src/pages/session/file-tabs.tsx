@@ -16,6 +16,7 @@ import { Tabs } from "@opencode-ai/ui/tabs"
 import { ScrollView } from "@opencode-ai/ui/scroll-view"
 import { showToast } from "@/utils/toast"
 import { selectionFromLines, useFile, type FileSelection, type SelectedLineRange } from "@/context/file"
+import { useSDK } from "@/context/sdk"
 import { useComments } from "@/context/comments"
 import { useLanguage } from "@/context/language"
 import { usePrompt } from "@/context/prompt"
@@ -548,6 +549,38 @@ function SessionFileViewV2(props: { tab: string }) {
     view,
   })
 
+  const sdk = useSDK()
+  const [editing, setEditing] = createSignal(false)
+  const [draft, setDraft] = createSignal("")
+  const [saving, setSaving] = createSignal(false)
+
+  const startEdit = () => {
+    setDraft(contents())
+    setEditing(true)
+  }
+
+  const save = async () => {
+    const p = path()
+    if (!p || saving()) return
+    setSaving(true)
+    try {
+      const directory = sdk().directory
+      const res = await fetch(`/file/write?directory=${encodeURIComponent(directory)}&path=${encodeURIComponent(p)}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ content: draft() }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      await file.load(p, { force: true })
+      setEditing(false)
+      showToast({ variant: "success", title: language.t("file.saved") })
+    } catch {
+      showToast({ variant: "error", title: language.t("file.saveFailed") })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const selectionPreview = (source: string, selection: FileSelection) => {
     return previewSelectedLines(source, {
       start: selection.startLine,
@@ -784,15 +817,56 @@ function SessionFileViewV2(props: { tab: string }) {
 
   const content = () => (
     <div class="mt-3 relative h-full min-h-0">
-      <ScrollView class="h-full" viewportRef={scrollSync.setViewport} onScroll={scrollSync.handleScroll as any}>
-        <Switch>
-          <Match when={state()?.loaded}>{renderFile(contents())}</Match>
-          <Match when={state()?.loading}>
-            <div class="px-6 py-4 text-text-weak">{language.t("common.loading")}...</div>
-          </Match>
-          <Match when={state()?.error}>{(err) => <div class="px-6 py-4 text-text-weak">{err()}</div>}</Match>
-        </Switch>
-      </ScrollView>
+      {editing() ? (
+        <>
+          <div class="absolute right-2 top-2 z-20 flex gap-2">
+            <button
+              type="button"
+              class="h-7 px-3 rounded-md text-12-regular text-text-base bg-surface-raised-base hover:bg-surface-raised-base-hover transition-colors"
+              onClick={() => setEditing(false)}
+              disabled={saving()}
+            >
+              {language.t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              class="h-7 px-3 rounded-md text-12-regular text-text-base bg-v2-background-bg-base hover:bg-surface-raised-base-hover transition-colors"
+              onClick={() => void save()}
+              disabled={saving()}
+            >
+              {saving() ? language.t("common.saving") : language.t("common.save")}
+            </button>
+          </div>
+          <textarea
+            class="w-full h-full min-h-0 p-3 font-mono text-13-regular bg-background-stronger outline-none resize-none"
+            value={draft()}
+            onInput={(e) => setDraft(e.currentTarget.value)}
+            spellcheck={false}
+            autocomplete="off"
+          />
+        </>
+      ) : (
+        <>
+          <div class="absolute right-2 top-2 z-20">
+            <button
+              type="button"
+              class="h-7 px-3 rounded-md text-12-regular text-text-base bg-surface-raised-base hover:bg-surface-raised-base-hover transition-colors"
+              onClick={startEdit}
+            >
+              {language.t("file.edit")}
+            </button>
+          </div>
+          <ScrollView class="h-full" viewportRef={scrollSync.setViewport} onScroll={scrollSync.handleScroll as any}>
+            <Switch>
+              <Match when={state()?.loaded}>{renderFile(contents())}</Match>
+              <Match when={state()?.loading}>
+                <div class="px-6 py-4 text-text-weak">{language.t("common.loading")}...</div>
+              </Match>
+              <Match when={state()?.error}>{(err) => <div class="px-6 py-4 text-text-weak">{err()}</div>}</Match>
+            </Switch>
+          </ScrollView>
+        </>
+      )}
     </div>
   )
 

@@ -1,6 +1,7 @@
 export const dict = {
   "ui.sessionReview.title": "Cambios de la sesión",
   "ui.sessionReview.title.git": "Cambios de Git",
+  "ui.sessionReview.title.files": "Todos los archivos del proyecto",
   "ui.sessionReview.title.branch": "Cambios de la rama",
   "ui.sessionReview.title.lastTurn": "Cambios del último turno",
   "ui.sessionReview.diffStyle.unified": "Unificado",
@@ -74,7 +75,7 @@ export const dict = {
 
   "dialog.usageExceeded.freeTier.title": "Límite gratuito alcanzado",
   "dialog.usageExceeded.freeTier.description":
-    "Suscríbete a OpenCode Go por 10 USD al mes para acceder de forma fiable a los mejores modelos de código abierto.",
+    "Suscríbete a VPS Code Go por 10 USD al mes para acceder de forma fiable a los mejores modelos de código abierto.",
   "dialog.usageExceeded.freeTier.actionLabel": "Suscribirse",
   "dialog.usageExceeded.accountRateLimit.title": "Límite de Go alcanzado",
   "dialog.usageExceeded.accountRateLimit.description":

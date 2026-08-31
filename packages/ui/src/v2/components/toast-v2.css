@@ -21,7 +21,7 @@
   outline: none;
   user-select: none;
   -webkit-user-select: none;
-  border-radius: 8px;
+  border-radius: 3px;
   color: var(--v2-text-text-base);
   background: var(--v2-background-bg-layer-01);
   box-shadow: var(--v2-elevation-floating);
@@ -90,7 +90,7 @@
     min-height: 20px;
     padding: 0;
     border: 0;
-    border-radius: 4px;
+    border-radius: 2px;
     transform: none;
     background: transparent;
     color: var(--v2-icon-icon-muted);

@@ -108,7 +108,7 @@ type FollowupItem = FollowupDraft & { id: string }
 type FollowupEdit = Pick<FollowupItem, "id" | "prompt" | "context">
 const emptyFollowups: FollowupItem[] = []
 
-type ChangeMode = "git" | "branch" | "turn"
+type ChangeMode = "git" | "branch" | "turn" | "files"
 type VcsMode = "git" | "branch"
 
 const sessionViewState = () => ({
@@ -328,7 +328,11 @@ function SessionProviders(props: ParentProps) {
 
 function SessionRouteFrame(props: ParentProps<{ padded?: boolean }>) {
   return (
-    <div class="relative size-full overflow-hidden flex flex-col" classList={{ "p-2": props.padded }}>
+    <div
+      data-component="agent-studio-session"
+      class="relative size-full overflow-hidden flex flex-col bg-v2-background-bg-deep"
+      classList={{ "p-3": props.padded }}
+    >
       {props.children}
     </div>
   )
@@ -337,11 +341,12 @@ function SessionRouteFrame(props: ParentProps<{ padded?: boolean }>) {
 function SessionPanelFrame(props: ParentProps<{ newLayout: boolean; raised?: boolean }>) {
   return (
     <div
+      data-slot="agent-studio-panel"
       classList={{
         "flex-1 min-h-0 flex flex-col": true,
         "bg-v2-background-bg-base": props.newLayout,
         "bg-background-stronger": !props.newLayout,
-        "rounded-[10px] overflow-hidden": props.newLayout,
+        "rounded-[3px] border border-v2-border-border-base overflow-hidden": props.newLayout,
         "shadow-[var(--v2-elevation-raised)]": props.newLayout && props.raised,
       }}
     >
@@ -480,7 +485,7 @@ export default function Page() {
   const sessionPanelAvailable = createMemo(() => {
     const width = panelRowWidth()
     if (width === undefined) return undefined
-    return width - (settings.general.newLayoutDesigns() ? 8 : 0)
+    return width - (settings.general.newLayoutDesigns() ? 12 : 0)
   })
   const sessionPanelMax = createMemo(() => {
     const available = sessionPanelAvailable()
@@ -658,6 +663,7 @@ export default function Page() {
     const list: ChangeMode[] = []
     const project = sync().project
     const vcs = sync().data.vcs
+    list.push("files")
     if (project?.vcs === "git") list.push("git")
     if (project?.vcs === "git" && vcs?.branch && vcs?.default_branch && vcs.branch !== vcs.default_branch) {
       list.push("branch")
@@ -1162,6 +1168,7 @@ export default function Page() {
   })
 
   const changesLabel = (option: ChangeMode) => {
+    if (option === "files") return language.t("ui.sessionReview.title.files")
     if (option === "git") return language.t("ui.sessionReview.title.git")
     if (option === "branch") return language.t("ui.sessionReview.title.branch")
     return language.t("ui.sessionReview.title.lastTurn")
@@ -1313,7 +1320,10 @@ export default function Page() {
     get activeFile() {
       return activeReviewFile()
     },
-    onSelectFile: focusReviewDiff,
+    onSelectFile: onSelectReviewFile,
+    get filesMode() {
+      return reviewMode() === "files"
+    },
     get diffStyle() {
       return layout.review.diffStyle()
     },
@@ -1426,6 +1436,14 @@ export default function Page() {
     view().review.openPath(path)
     view().review.setFile(path)
     setTree("pendingDiff", path)
+  }
+
+  const onSelectReviewFile = (path: string) => {
+    if (reviewMode() === "files") {
+      openReviewFile(path)
+      return
+    }
+    focusReviewDiff(path)
   }
 
   createEffect(() => {
@@ -2253,7 +2271,7 @@ export default function Page() {
         ref={panelRow}
         class="flex-1 min-h-0 flex flex-col md:flex-row"
         classList={{
-          "gap-2 p-2": settings.general.newLayoutDesigns(),
+          "gap-3 p-3": settings.general.newLayoutDesigns(),
         }}
       >
         <Show when={!isDesktop() && !!params.id && !settings.general.newLayoutDesigns()}>{mobileTabs()}</Show>

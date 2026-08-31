@@ -208,7 +208,7 @@ function HomeServerRow(props: {
     if (props.contextMenuOpen(id)) props.onSetContextMenuOpen(id, false)
   })
   return (
-    <div class="group/server relative flex h-7 min-w-0 items-center rounded-[6px]">
+    <div class="group/server relative flex h-7 min-w-0 items-center rounded-[3px]">
       <HomeProjectNavButton
         type="button"
         class="pr-16 disabled:opacity-60"
@@ -473,7 +473,7 @@ function HomeProjectRow(
   return (
     <div
       ref={sortable.ref}
-      class="group/project relative flex h-7 min-w-0 items-center rounded-[6px]"
+      class="group/project relative flex h-7 min-w-0 items-center rounded-[3px]"
       classList={{ "z-10": sortable.isDragSource() }}
       onContextMenu={(event) => {
         event.preventDefault()
@@ -591,7 +591,7 @@ function HomeProjectNavButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>
     <button
       {...rest}
       class={`
-        flex h-7 min-w-0 w-full shrink-0 cursor-default items-center gap-2 rounded-[6px] bg-transparent px-1.5 text-left
+        flex h-7 min-w-0 w-full shrink-0 cursor-default items-center gap-2 rounded-[3px] bg-transparent px-1.5 text-left
         text-v2-text-text-muted [font-weight:440] transition-[background-color,color,box-shadow] duration-[120ms] ease-in-out
         hover:bg-v2-background-bg-layer-01 hover:text-v2-text-text-base
         data-[selected]:bg-v2-background-bg-layer-03 data-[selected]:text-v2-text-text-base

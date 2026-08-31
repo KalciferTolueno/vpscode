@@ -1022,7 +1022,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const addPart = (part: ContentPart) => {
     if (part.type === "image") return false
-
     const selection = window.getSelection()
     if (!selection) return false
 

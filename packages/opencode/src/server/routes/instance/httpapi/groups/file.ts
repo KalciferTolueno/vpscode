@@ -92,6 +92,10 @@ export const LegacyStatus = Schema.Struct({
   status: Schema.Literals(["added", "deleted", "modified"]),
 }).annotate({ identifier: "File" })
 
+export const FileWriteInput = Schema.Struct({
+  content: Schema.String,
+}).annotate({ identifier: "FileWriteInput" })
+
 export const FilePaths = {
   findText: "/find",
   findFile: "/find/file",
@@ -99,6 +103,7 @@ export const FilePaths = {
   list: "/file",
   content: "/file/content",
   status: "/file/status",
+  write: "/file/write",
 } as const
 
 export const FileApi = HttpApi.make("file")
@@ -163,6 +168,17 @@ export const FileApi = HttpApi.make("file")
             identifier: "file.status",
             summary: "Get file status",
             description: "Get the git status of all files in the project.",
+          }),
+        ),
+        HttpApiEndpoint.post("write", FilePaths.write, {
+          query: FileQuery,
+          payload: FileWriteInput,
+          success: described(Schema.Boolean, "Written"),
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "file.write",
+            summary: "Write file",
+            description: "Write content to a file in the project.",
           }),
         ),
       )

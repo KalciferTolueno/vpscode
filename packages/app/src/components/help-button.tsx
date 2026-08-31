@@ -26,7 +26,7 @@ export function TabsInfoPopup() {
     <Drawer open={drawerOpen()} onOpenChange={setDrawerOpen} side={rtl() ? "left" : "right"}>
       <Show when={settings.general.shouldDisplayTabsToast()}>
         <div
-          class="fixed bottom-5 end-5 z-50 h-[240px] w-[192px] rounded-[8px] bg-v2-background-bg-base p-1 shadow-[var(--v2-elevation-floating)]"
+          class="fixed bottom-5 end-5 z-50 h-[240px] w-[192px] rounded-[3px] border border-v2-border-border-muted bg-v2-background-bg-base p-1 shadow-[var(--v2-elevation-floating)]"
           aria-label={language.t("help.tabs.toast.ariaLabel")}
         >
           <button
@@ -128,11 +128,11 @@ export function TabsInfoPopup() {
           </p>
           <div class="flex w-full flex-1 flex-col gap-4 text-[13px] font-[440] leading-5 tracking-[-0.04px] text-v2-text-text-base">
             <p>{language.t("help.tabs.introduction")}</p>
-            <img src={tabsImage} alt="" class="aspect-video w-full rounded-[6px] object-cover" />
+            <img src={tabsImage} alt="" class="aspect-video w-full rounded-[3px] object-cover" />
             <p>{language.t("help.tabs.sessions")}</p>
             <p>{language.t("help.tabs.organize")}</p>
             <p>{language.t("help.tabs.home")}</p>
-            <img src={homeImage} alt="" class="aspect-video w-full rounded-[6px] object-cover" />
+            <img src={homeImage} alt="" class="aspect-video w-full rounded-[3px] object-cover" />
             <p>{language.t("help.tabs.persistence")}</p>
             <p>{language.t("help.tabs.worktrees")}</p>
           </div>

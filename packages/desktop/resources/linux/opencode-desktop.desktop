@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=OpenCode
+Name=VPS Code
 Exec=/opt/OpenCode/ai.opencode.desktop %U
 Terminal=false
 Type=Application

@@ -15,6 +15,7 @@ import {
   type DragEvent,
 } from "@thisbeyond/solid-dnd"
 import { Tabs } from "@opencode-ai/ui/tabs"
+import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Icon } from "@opencode-ai/ui/icon"
 import { TooltipKeybind } from "@opencode-ai/ui/tooltip"
@@ -56,6 +57,7 @@ import {
 import { setSessionHandoff } from "@/pages/session/handoff"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { SessionFileBrowserTab, type SessionFileBrowserState } from "@/pages/session/v2/session-file-browser-tab"
+import { SessionPreviewTab, setPreviewUrlFor } from "@/pages/session/v2/session-preview-tab"
 
 type ReviewDiff = FileDiffInfo | SnapshotFileDiff | VcsFileDiff
 type RenderDiff = FileDiffInfo | (SnapshotFileDiff & { file: string }) | VcsFileDiff
@@ -182,11 +184,58 @@ export function SessionSidePanel(props: {
     fileBrowser: () => !!props.fileBrowserState,
   })
   const contextOpen = tabState.contextOpen
+  const browserOpen = tabState.browserOpen
+  const browserTabs = tabState.browserTabs
   const openFileOpen = tabState.openFileOpen
   const panelTabs = tabState.panelTabs
   const openedTabs = tabState.openedTabs
   const activeTab = tabState.activeTab
   const activeFileTab = tabState.activeFileTab
+
+  const openPreviewBrowser = (url: string) => {
+    tabs().open("browser")
+    openReviewPanel()
+    queueMicrotask(() => {
+      tabs().setActive("browser")
+      setPreviewUrlFor(sessionKey(), "browser", url)
+    })
+  }
+
+  const openNewBrowser = () => {
+    const existing = browserTabs()
+    let id = "browser"
+    if (existing.includes("browser")) {
+      const max = existing.reduce((m, t) => {
+        const n = Number(t.split(":")[1] ?? 1)
+        return Number.isInteger(n) ? Math.max(m, n) : m
+      }, 1)
+      id = `browser:${max + 1}`
+    }
+    tabs().open(id)
+    openReviewPanel()
+    queueMicrotask(() => tabs().setActive(id))
+  }
+
+  // The agent requests a preview by writing the URL (e.g. /preview/5173/) to
+  // .opencode/preview in the project directory.
+  let lastPreview: string | undefined
+  const previewWatcher = setInterval(() => {
+    const directory = projectDirectory()
+    if (!directory) return
+    const path = `${directory.replace(/[\\/]+$/, "")}/.opencode/preview`
+    sdk()
+      .client.file.read({ path })
+      .then((x) => {
+        const raw = (x as { data?: unknown }).data
+        const text = typeof raw === "string" ? raw : (raw as { content?: unknown } | undefined)?.content
+        const value = typeof text === "string" ? text.trim() : ""
+        if (!value || value === lastPreview) return
+        lastPreview = value
+        openPreviewBrowser(value)
+      })
+      .catch(() => {})
+  }, 3000)
+  onCleanup(() => clearInterval(previewWatcher))
 
   const fileTreeTab = () => layout.fileTree.tab()
 
@@ -216,6 +265,12 @@ export function SessionSidePanel(props: {
     queueMicrotask(() => fileFilter?.focus())
   }
   const activateTab = (value: string) => {
+    if (value === "browser" || value.startsWith("browser:")) {
+      tabs().open(value)
+      openReviewPanel()
+      tabs().setActive(value)
+      return
+    }
     const next = normalizeTab(value)
     const path = file.pathFromTab(next)
     if (path) void file.load(path)
@@ -291,6 +346,7 @@ export function SessionSidePanel(props: {
     <Show when={isDesktop() && !(settings.general.newLayoutDesigns() && !params.id)}>
       <aside
         id="review-panel"
+        data-slot="agent-studio-panel"
         aria-label={language.t("session.panel.reviewAndFiles")}
         aria-hidden={!open()}
         inert={!open()}
@@ -303,7 +359,8 @@ export function SessionSidePanel(props: {
           "pointer-events-none": !open(),
           "transition-[width] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] motion-reduce:transition-none":
             !props.size.active() && !props.reviewSnap,
-          "rounded-[10px] shadow-[var(--v2-elevation-raised)] overflow-hidden": settings.general.newLayoutDesigns(),
+          "rounded-[3px] border border-v2-border-border-base shadow-[var(--v2-elevation-raised)] overflow-hidden":
+            settings.general.newLayoutDesigns(),
           "flex-1": reviewOpen(),
         }}
         style={{ width: panelWidth() }}
@@ -391,6 +448,36 @@ export function SessionSidePanel(props: {
                                   </div>
                                 </Tabs.Trigger>
                               </Show>
+                              <For each={browserTabs()}>
+                                {(tab) => (
+                                  <Tabs.Trigger
+                                    value={tab}
+                                    closeButton={
+                                      <TooltipKeybind
+                                        title={language.t("common.closeTab")}
+                                        keybind={command.keybind("tab.close")}
+                                        placement="bottom"
+                                        gutter={10}
+                                      >
+                                        <IconButton
+                                          icon="close-small"
+                                          variant="ghost"
+                                          class="h-5 w-5"
+                                          onClick={() => tabs().close(tab)}
+                                          aria-label={language.t("common.closeTab")}
+                                        />
+                                      </TooltipKeybind>
+                                    }
+                                    hideCloseButton
+                                    onMiddleClick={() => tabs().close(tab)}
+                                  >
+                                    <div class="flex items-center gap-1.5">
+                                      <Icon name="window-cursor" size="small" />
+                                      <div>{language.t("session.tab.browser")}</div>
+                                    </div>
+                                  </Tabs.Trigger>
+                                )}
+                              </For>
                               <SortableProvider ids={openedTabs()}>
                                 <For each={panelTabs()}>
                                   {(tab) => (
@@ -442,24 +529,34 @@ export function SessionSidePanel(props: {
                                   "bg-background-stronger": !settings.general.newLayoutDesigns(),
                                 }}
                               >
-                                <TooltipKeybind
-                                  title={language.t("command.file.open")}
-                                  keybind={command.keybind("file.open")}
-                                  class="flex items-center"
-                                >
-                                  <IconButton
+                                <DropdownMenu placement="bottom-end" gutter={4}>
+                                  <DropdownMenu.Trigger
+                                    as={IconButton}
                                     icon="plus-small"
                                     variant="ghost"
                                     iconSize="large"
                                     class="!rounded-md"
-                                    onClick={() => {
-                                      void import("@/components/dialog-select-file").then((x) => {
-                                        dialog.show(() => <x.DialogSelectFile mode="files" onOpenFile={showAllFiles} />)
-                                      })
-                                    }}
                                     aria-label={language.t("command.file.open")}
                                   />
-                                </TooltipKeybind>
+                                  <DropdownMenu.Portal>
+                                    <DropdownMenu.Content class="mt-1">
+                                      <DropdownMenu.Item
+                                        onSelect={() => {
+                                          void import("@/components/dialog-select-file").then((x) => {
+                                            dialog.show(() => <x.DialogSelectFile mode="files" onOpenFile={showAllFiles} />)
+                                          })
+                                        }}
+                                      >
+                                        <DropdownMenu.ItemLabel>{language.t("command.file.open")}</DropdownMenu.ItemLabel>
+                                      </DropdownMenu.Item>
+                                      <DropdownMenu.Item onSelect={() => openNewBrowser()}>
+                                        <DropdownMenu.ItemLabel>
+                                          {language.t("session.preview.openBrowser")}
+                                        </DropdownMenu.ItemLabel>
+                                      </DropdownMenu.Item>
+                                    </DropdownMenu.Content>
+                                  </DropdownMenu.Portal>
+                                </DropdownMenu>
                               </div>
                             </Tabs.List>
                           </div>
@@ -497,6 +594,16 @@ export function SessionSidePanel(props: {
                               </div>
                             </Tabs.Content>
                           </Show>
+
+                          <For each={browserTabs()}>
+                            {(tab) => (
+                              <Show when={activeTab() === tab}>
+                                <Tabs.Content value={tab} class="flex flex-col h-full overflow-hidden contain-strict">
+                                  <SessionPreviewTab tabId={tab} sessionKey={sessionKey()} />
+                                </Tabs.Content>
+                              </Show>
+                            )}
+                          </For>
 
                           <Show when={activeFileTab()} keyed>
                             {(tab) => <FileTabContent tab={tab} />}
@@ -604,7 +711,43 @@ export function SessionSidePanel(props: {
                                   <div>{language.t("session.tab.context")}</div>
                                 </div>
                               </Tabs.Trigger>
-                            </Show>
+                              </Show>
+                                <For each={browserTabs()}>
+                                  {(tab) => (
+                                    <Tabs.Trigger
+                                      value={tab}
+                                      closeButton={
+                                        <TooltipV2
+                                          value={
+                                            <>
+                                              {language.t("common.closeTab")}
+                                              <Show when={closeTabKeybind().length > 0}>
+                                                <KeybindV2 keys={closeTabKeybind()} variant="neutral" />
+                                              </Show>
+                                            </>
+                                          }
+                                          placement="bottom"
+                                          gutter={10}
+                                        >
+                                          <IconButton
+                                            icon="close-small"
+                                            variant="ghost"
+                                            class="h-5 w-5"
+                                            onClick={() => tabs().close(tab)}
+                                            aria-label={language.t("common.closeTab")}
+                                          />
+                                        </TooltipV2>
+                                      }
+                                      hideCloseButton
+                                      onMiddleClick={() => tabs().close(tab)}
+                                    >
+                                      <div class="flex items-center gap-2">
+                                        <Icon name="window-cursor" size="small" />
+                                        <div>{language.t("session.tab.browser")}</div>
+                                      </div>
+                                    </Tabs.Trigger>
+                                  )}
+                                </For>
                             <For each={panelTabs()}>
                               {(tab) => (
                                 <Show
@@ -661,26 +804,27 @@ export function SessionSidePanel(props: {
                                 "bg-background-stronger": !settings.general.newLayoutDesigns(),
                               }}
                             >
-                              <TooltipV2
-                                value={
-                                  <>
-                                    {language.t("command.file.open")}
-                                    <Show when={openFileKeybind().length > 0}>
-                                      <KeybindV2 keys={openFileKeybind()} variant="neutral" />
-                                    </Show>
-                                  </>
-                                }
-                                placement="bottom"
-                                class="flex items-center"
-                              >
-                                <IconButtonV2
+                              <DropdownMenu placement="bottom-end" gutter={4}>
+                                <DropdownMenu.Trigger
+                                  as={IconButtonV2}
                                   icon={<Icon name="plus-small" />}
                                   variant="ghost-muted"
                                   size="large"
-                                  onClick={() => openFileBrowser()}
                                   aria-label={language.t("command.file.open")}
                                 />
-                              </TooltipV2>
+                                <DropdownMenu.Portal>
+                                  <DropdownMenu.Content class="mt-1">
+                                    <DropdownMenu.Item onSelect={() => openFileBrowser()}>
+                                      <DropdownMenu.ItemLabel>{language.t("command.file.open")}</DropdownMenu.ItemLabel>
+                                    </DropdownMenu.Item>
+                                    <DropdownMenu.Item onSelect={() => openNewBrowser()}>
+                                      <DropdownMenu.ItemLabel>
+                                        {language.t("session.preview.openBrowser")}
+                                      </DropdownMenu.ItemLabel>
+                                    </DropdownMenu.Item>
+                                  </DropdownMenu.Content>
+                                </DropdownMenu.Portal>
+                              </DropdownMenu>
                             </div>
                           </Tabs.List>
                           <div
@@ -725,6 +869,16 @@ export function SessionSidePanel(props: {
                             </div>
                           </Tabs.Content>
                         </Show>
+
+                        <For each={browserTabs()}>
+                          {(tab) => (
+                            <Show when={activeTab() === tab}>
+                              <Tabs.Content value={tab} class="flex flex-col h-full overflow-hidden contain-strict">
+                                <SessionPreviewTab tabId={tab} sessionKey={sessionKey()} />
+                              </Tabs.Content>
+                            </Show>
+                          )}
+                        </For>
 
                         <Show when={fileBrowserMounted()}>
                           <div

@@ -66,7 +66,7 @@ export const lineCommentStyles = `
   min-width: 200px;
   max-width: none;
   box-sizing: border-box;
-  border-radius: 8px;
+  border-radius: 3px;
   background: var(--surface-raised-stronger-non-alpha);
   box-shadow: var(--shadow-xxs-border);
   padding: 12px;

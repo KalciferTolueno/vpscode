@@ -505,7 +505,7 @@
       width: 100%;
       height: 32px;
       border: none;
-      border-radius: 8px;
+      border-radius: 3px;
       background-color: transparent;
 
       [data-slot="tabs-trigger"] {
@@ -544,7 +544,7 @@
       [data-slot="tabs-trigger-wrapper"] {
         height: 32px;
         border: none;
-        border-radius: 8px;
+        border-radius: 3px;
 
         [data-slot="tabs-trigger"] {
           border: none;

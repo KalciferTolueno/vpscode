@@ -50,7 +50,7 @@
       padding-block: 6px;
       padding-inline: 12px 6px;
       box-shadow: none;
-      border-radius: 6px;
+      border-radius: 3px;
       min-width: 160px;
       height: 32px;
       justify-content: flex-end;
@@ -73,7 +73,7 @@
         flex-shrink: 0;
         color: var(--text-weak);
         background-color: var(--surface-raised-base);
-        border-radius: 4px;
+        border-radius: 2px;
         transition: transform 0.1s ease-in-out;
       }
 
@@ -129,7 +129,7 @@
     align-items: center;
     padding: 2px 8px;
     gap: 12px;
-    border-radius: 4px;
+    border-radius: 2px;
     cursor: default;
 
     /* text-12-medium */
@@ -171,7 +171,7 @@
 
 [data-component="select-content"][data-trigger-style="settings"] {
   min-width: 160px;
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 0;
 
   [data-slot="select-select-content-list"] {

@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, interactive-widget=resizes-content, viewport-fit=cover"
     />
-    <title>OpenCode</title>
+    <title>VPS Code</title>
     <link rel="icon" type="image/png" href="/favicon-96x96-v3.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon-v3.svg" />
     <link rel="shortcut icon" href="/favicon-v3.ico" />
@@ -21,6 +21,14 @@
     <script id="oc-theme-preload-script" src="/oc-theme-preload.js"></script>
   </head>
   <body class="antialiased overscroll-none text-12-regular overflow-hidden bg-v2-background-bg-deep">
+    <!--
+    THESIS: The agent is the workspace; reject permanent IDE chrome as the organizing principle.
+    OWN-WORLD: Theme-driven surfaces, deep canvas, 12px floating gutters, 1px semantic borders, 2–3px corners, restrained elevation.
+    STORY: Start with a central prompt; active work reveals conversation, files, review, terminal, and browser preview only when useful.
+    FIRST VIEWPORT: One central agent action at rest; in-session, conversation leads left while result and tools occupy the right floating panel.
+    FORM: User-pinned agent workbench, reference C:/Users/c00kie/Desktop/agent-studio-black-gaps.html, seed 77b0e819.
+    FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
+    -->
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root" class="flex flex-col h-dvh bg-v2-background-bg-deep p-px"></div>
     <script src="/src/entry.tsx" type="module"></script>

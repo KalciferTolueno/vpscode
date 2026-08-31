@@ -74,6 +74,7 @@ const it = testEffect(
             if (info) return Effect.succeed(info)
             return Effect.fail(new Skill.NotFoundError({ name, available: skills.map((skill) => skill.name) }))
           },
+          installed: () => Effect.succeed(skills),
           all: () => Effect.succeed(skills),
           dirs: () => Effect.succeed([]),
           available: () => Effect.succeed(skills),

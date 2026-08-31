@@ -14,7 +14,7 @@
   z-index: 60;
   pointer-events: auto;
   background: var(--v2-background-bg-layer-01);
-  border-radius: 6px;
+  border-radius: 3px;
   box-shadow: var(--v2-elevation-floating);
   transform-origin: top center;
   animation: select-v2-content-in 120ms ease-out;
@@ -58,7 +58,7 @@
   width: 280px;
   height: 28px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 3px;
   outline: 1px solid transparent;
   outline-offset: 0;
   background:
@@ -169,7 +169,7 @@
   padding: 2px;
   gap: 3px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 2px;
   background: transparent;
   color: var(--v2-icon-icon-muted);
   pointer-events: none;
@@ -194,7 +194,7 @@
   padding-block: 4px;
   padding-inline: 8px 4px;
   gap: 4px;
-  border-radius: 4px;
+  border-radius: 2px;
   background: transparent;
   box-shadow: none;
   outline: none;

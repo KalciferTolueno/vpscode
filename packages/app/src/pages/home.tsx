@@ -17,7 +17,7 @@ export function NewHome() {
   return (
     <div
       class={`
-        m-2 min-h-0 flex-1 self-stretch overflow-hidden rounded-[10px]
+        m-3 min-h-0 flex-1 self-stretch overflow-hidden rounded-[3px] border border-v2-border-border-muted
         bg-v2-background-bg-base shadow-[var(--v2-elevation-raised)]
       `}
     >

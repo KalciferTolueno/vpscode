@@ -9,7 +9,7 @@ NC='\033[0m' # No Color
 
 usage() {
     cat <<EOF
-OpenCode Installer
+VPS Code Installer
 
 Usage: install.sh [options]
 
@@ -444,13 +444,11 @@ if [ -n "${GITHUB_ACTIONS-}" ] && [ "${GITHUB_ACTIONS}" == "true" ]; then
 fi
 
 echo -e ""
-echo -e "${MUTED}                    ${NC}             ▄     "
-echo -e "${MUTED}█▀▀█ █▀▀█ █▀▀█ █▀▀▄ ${NC}█▀▀▀ █▀▀█ █▀▀█ █▀▀█"
-echo -e "${MUTED}█░░█ █░░█ █▀▀▀ █░░█ ${NC}█░░░ █░░█ █░░█ █▀▀▀"
-echo -e "${MUTED}▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀  ▀ ${NC}▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀"
+echo -e "${MUTED}█ █ █▀█ █▀▀${NC}  █▀▀ █▀█ █▀▄ █▀▀"
+echo -e "${MUTED}▀▄▀ █▀▀ ▀▀█${NC}  █▄▄ █▄█ █▄▀ ██▄"
 echo -e ""
 echo -e ""
-echo -e "${MUTED}OpenCode includes free models, to start:${NC}"
+echo -e "${MUTED}VPS Code includes free models, to start:${NC}"
 echo -e ""
 echo -e "cd <project>  ${MUTED}# Open directory${NC}"
 echo -e "opencode      ${MUTED}# Run command${NC}"

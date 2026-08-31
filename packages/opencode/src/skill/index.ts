@@ -97,6 +97,7 @@ type ScanState = {
 export interface Interface {
   readonly get: (name: string) => Effect.Effect<Info | undefined>
   readonly require: (name: string) => Effect.Effect<Info, NotFoundError>
+  readonly installed: () => Effect.Effect<Info[]>
   readonly all: () => Effect.Effect<Info[]>
   readonly dirs: () => Effect.Effect<string[]>
   readonly available: (agent?: Agent.Info) => Effect.Effect<Info[]>
@@ -288,19 +289,24 @@ const layer = Layer.effect(
 
     const get = Effect.fn("Skill.get")(function* (name: string) {
       const s = yield* InstanceState.get(state)
+      if ((yield* config.getGlobal()).disabled_skills?.includes(name)) return
       return s.skills[name]
     })
 
     const require = Effect.fn("Skill.require")(function* (name: string) {
-      const s = yield* InstanceState.get(state)
-      const info = s.skills[name]
+      const info = yield* get(name)
       if (info) return info
-      return yield* new NotFoundError({ name, available: Object.keys(s.skills).toSorted() })
+      return yield* new NotFoundError({ name, available: (yield* all()).map((item) => item.name).toSorted() })
+    })
+
+    const installed = Effect.fn("Skill.installed")(function* () {
+      const s = yield* InstanceState.get(state)
+      return Object.values(s.skills)
     })
 
     const all = Effect.fn("Skill.all")(function* () {
-      const s = yield* InstanceState.get(state)
-      return Object.values(s.skills)
+      const disabled = new Set((yield* config.getGlobal()).disabled_skills ?? [])
+      return (yield* installed()).filter((skill) => !disabled.has(skill.name))
     })
 
     const dirs = Effect.fn("Skill.dirs")(function* () {
@@ -308,13 +314,12 @@ const layer = Layer.effect(
     })
 
     const available = Effect.fn("Skill.available")(function* (agent?: Agent.Info) {
-      const s = yield* InstanceState.get(state)
-      const list = Object.values(s.skills).toSorted((a, b) => a.name.localeCompare(b.name))
+      const list = (yield* all()).toSorted((a, b) => a.name.localeCompare(b.name))
       if (!agent) return list
       return list.filter((skill) => Permission.evaluate("skill", skill.name, agent.permission).action !== "deny")
     })
 
-    return Service.of({ get, require, all, dirs, available })
+    return Service.of({ get, require, installed, all, dirs, available })
   }),
 )
 

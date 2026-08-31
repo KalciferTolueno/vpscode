@@ -52,6 +52,7 @@ export type ReviewPanelV2Props = {
   comments?: SessionReviewComment[]
   focusedComment?: SessionReviewFocus | null
   onFocusedCommentChange?: (focus: SessionReviewFocus | null) => void
+  filesMode?: boolean
 }
 
 export function ReviewPanelV2(props: ReviewPanelV2Props) {
@@ -112,7 +113,7 @@ export function ReviewPanelV2(props: ReviewPanelV2Props) {
   return (
     <SessionReviewV2
       title={props.title}
-      stats={<DiffChanges changes={diffs()} />}
+      stats={props.filesMode ? undefined : <DiffChanges changes={diffs()} />}
       empty={props.empty}
       sidebarOpen={props.state.sidebarOpened()}
       sidebar={
@@ -128,41 +129,44 @@ export function ReviewPanelV2(props: ReviewPanelV2Props) {
           searching={searching}
           kinds={treeKinds}
           activeDiff={activeDiff}
+          filesMode={props.filesMode}
         />
       }
-      activeFile={activeDiff()}
-      files={filteredFiles()}
+      activeFile={props.filesMode ? undefined : activeDiff()}
+      files={props.filesMode ? [] : filteredFiles()}
       onSelectFile={props.onSelectFile}
       diffStyle={props.diffStyle}
       onDiffStyleChange={props.onDiffStyleChange}
       expandMode={props.state.expandMode()}
       onExpandModeChange={props.state.setExpandMode}
-      hasDiffs={diffs().length > 0}
+      hasDiffs={props.filesMode ? true : diffs().length > 0}
       preview={
         // Key on the file path, not the diff object identity, so refreshed diff data
         // updates the mounted preview instead of remounting the whole viewer.
-        <Show when={activeDiff()} keyed>
-          {(file) => (
-            <Show when={activeItem()}>
-              {(diff) => (
-                <SessionReviewFilePreviewV2
-                  file={file}
-                  diff={diff()}
-                  diffStyle={props.diffStyle}
-                  expandMode={props.state.expandMode()}
-                  readFile={readFile}
-                  onLineComment={props.onLineComment}
-                  onLineCommentUpdate={props.onLineCommentUpdate}
-                  onLineCommentDelete={props.onLineCommentDelete}
-                  lineCommentActions={props.lineCommentActions}
-                  comments={props.comments}
-                  focusedComment={props.focusedComment}
-                  onFocusedCommentChange={props.onFocusedCommentChange}
-                />
-              )}
-            </Show>
-          )}
-        </Show>
+        props.filesMode ? undefined : (
+          <Show when={activeDiff()} keyed>
+            {(file) => (
+              <Show when={activeItem()}>
+                {(diff) => (
+                  <SessionReviewFilePreviewV2
+                    file={file}
+                    diff={diff()}
+                    diffStyle={props.diffStyle}
+                    expandMode={props.state.expandMode()}
+                    readFile={readFile}
+                    onLineComment={props.onLineComment}
+                    onLineCommentUpdate={props.onLineCommentUpdate}
+                    onLineCommentDelete={props.onLineCommentDelete}
+                    lineCommentActions={props.lineCommentActions}
+                    comments={props.comments}
+                    focusedComment={props.focusedComment}
+                    onFocusedCommentChange={props.onFocusedCommentChange}
+                  />
+                )}
+              </Show>
+            )}
+          </Show>
+        )
       }
     />
   )
@@ -178,6 +182,7 @@ function ReviewPanelV2Sidebar(props: {
   searching: () => boolean
   kinds: () => ReturnType<typeof reviewDiffKinds>
   activeDiff: () => string | undefined
+  filesMode?: boolean
 }) {
   const language = useLanguage()
   const [explicitHighlight, setExplicitHighlight] = createSignal<string | undefined>()
@@ -222,32 +227,44 @@ function ReviewPanelV2Sidebar(props: {
         }
       >
         <Show
-          when={props.searching()}
+          when={props.filesMode}
           fallback={
-            <FileTreeV2
-              allowed={props.filteredFiles()}
-              kinds={props.kinds()}
-              draggable={false}
-              active={props.activeDiff()}
-              onFileClick={(node) => props.onSelectFile(node.path)}
-            />
+            <Show
+              when={props.searching()}
+              fallback={
+                <FileTreeV2
+                  allowed={props.filteredFiles()}
+                  kinds={props.kinds()}
+                  draggable={false}
+                  active={props.activeDiff()}
+                  onFileClick={(node) => props.onSelectFile(node.path)}
+                />
+              }
+            >
+              <Show
+                when={props.filteredFiles().length > 0}
+                fallback={<div class="px-2 py-2 text-12-regular text-text-weak">{language.t("palette.empty")}</div>}
+              >
+                <SessionFileListV2
+                  files={props.filteredFiles()}
+                  kinds={props.kinds()}
+                  active={props.activeDiff()}
+                  highlighted={highlightedPath()}
+                  onFileClick={(path) => {
+                    setExplicitHighlight(path)
+                    props.onSelectFile(path)
+                  }}
+                />
+              </Show>
+            </Show>
           }
         >
-          <Show
-            when={props.filteredFiles().length > 0}
-            fallback={<div class="px-2 py-2 text-12-regular text-text-weak">{language.t("palette.empty")}</div>}
-          >
-            <SessionFileListV2
-              files={props.filteredFiles()}
-              kinds={props.kinds()}
-              active={props.activeDiff()}
-              highlighted={highlightedPath()}
-              onFileClick={(path) => {
-                setExplicitHighlight(path)
-                props.onSelectFile(path)
-              }}
-            />
-          </Show>
+          <FileTreeV2
+            allowed={undefined}
+            kinds={new Map()}
+            draggable={false}
+            onFileClick={(node) => props.onSelectFile(node.path)}
+          />
         </Show>
       </Show>
     </SessionReviewV2Sidebar>

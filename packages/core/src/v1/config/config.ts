@@ -42,6 +42,9 @@ export const Info = Schema.Struct({
     description: "Command configuration, see https://opencode.ai/docs/commands",
   }),
   skills: Schema.optional(ConfigSkillsV1.Info).annotate({ description: "Additional skill folder paths" }),
+  disabled_skills: Schema.optional(Schema.mutable(Schema.Array(Schema.String))).annotate({
+    description: "Disable skills globally by name",
+  }),
   references: Schema.optional(ConfigReference.Info).annotate({
     description: "Named git or local directory references",
   }),

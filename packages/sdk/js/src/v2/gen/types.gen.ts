@@ -1902,6 +1902,7 @@ export type Config = {
     paths?: Array<string>
     urls?: Array<string>
   }
+  disabled_skills?: Array<string>
   references?: {
     [key: string]: string | ConfigV2ReferenceGit | ConfigV2ReferenceLocal
   }
@@ -2298,6 +2299,10 @@ export type File = {
   added: number
   removed: number
   status: "added" | "deleted" | "modified"
+}
+
+export type FileWriteInput = {
+  content: string
 }
 
 export type Path = {
@@ -8080,6 +8085,35 @@ export type FileStatusResponses = {
 }
 
 export type FileStatusResponse = FileStatusResponses[keyof FileStatusResponses]
+
+export type FileWriteData = {
+  body?: FileWriteInput
+  path?: never
+  query: {
+    directory?: string
+    workspace?: string
+    path: string
+  }
+  url: "/file/write"
+}
+
+export type FileWriteErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type FileWriteError = FileWriteErrors[keyof FileWriteErrors]
+
+export type FileWriteResponses = {
+  /**
+   * Written
+   */
+  200: boolean
+}
+
+export type FileWriteResponse = FileWriteResponses[keyof FileWriteResponses]
 
 export type InstanceDisposeData = {
   body?: never

@@ -10,6 +10,7 @@ import ignore from "ignore"
 import path from "path"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { InstanceHttpApi } from "../api"
+import { InvalidRequestError } from "../errors"
 
 export const fileHandlers = HttpApiBuilder.group(InstanceHttpApi, "file", (handlers) =>
   Effect.gen(function* () {
@@ -128,6 +129,20 @@ export const fileHandlers = HttpApiBuilder.group(InstanceHttpApi, "file", (handl
       return []
     })
 
+    const write = Effect.fn("FileHttpApi.write")(function* (ctx: {
+      query: { path: string }
+      payload: { content: string }
+    }) {
+      const directory = (yield* InstanceState.context).directory
+      const file = path.resolve(directory, ctx.query.path)
+      if (!FSUtil.contains(directory, file))
+        return yield* new InvalidRequestError({ message: "Path escapes the location", field: "path" })
+      yield* FSUtil.Service.use((fs) => fs.writeWithDirs(file, ctx.payload.content)).pipe(
+        Effect.mapError((error) => new InvalidRequestError({ message: error.message, field: "path" })),
+      )
+      return true
+    })
+
     return handlers
       .handle("findText", findText)
       .handle("findFile", findFile)
@@ -135,5 +150,6 @@ export const fileHandlers = HttpApiBuilder.group(InstanceHttpApi, "file", (handl
       .handle("list", list)
       .handle("content", content)
       .handle("status", status)
+      .handle("write", write)
   }),
 ).pipe(Layer.provide(locationServiceMapLayer))

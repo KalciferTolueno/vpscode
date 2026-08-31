@@ -188,7 +188,7 @@ const defaultSettings: Settings = {
     showFileTree: false,
     showNavigation: false,
     showSearch: false,
-    showStatus: false,
+    showStatus: true,
     showTerminal: false,
     showReasoningSummaries: false,
     shellToolPartsExpanded: false,

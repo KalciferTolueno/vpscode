@@ -31,6 +31,22 @@ const itWithoutExternalSkills = testEffect(
     testInstanceStoreLayer,
   ),
 )
+const itWithDisabledSkill = testEffect(
+  Layer.mergeAll(
+    LayerNode.compile(Skill.node, [
+      [
+        Config.node,
+        Layer.mock(Config.Service, {
+          get: () => Effect.succeed({}),
+          getGlobal: () => Effect.succeed({ disabled_skills: ["global-test-skill"] }),
+          directories: () => Effect.succeed([]),
+        }),
+      ],
+    ]),
+    node,
+    testInstanceStoreLayer,
+  ),
+)
 
 async function createGlobalSkill(homeDir: string) {
   const skillDir = path.join(homeDir, ".claude", "skills", "global-test-skill")
@@ -288,6 +304,30 @@ description: A skill in the .claude/skills directory.
             expect(list[0].name).toBe("global-test-skill")
             expect(list[0].description).toBe("A global skill from ~/.claude/skills for testing.")
             expect(list[0].location).toContain(path.join(".claude", "skills", "global-test-skill", "SKILL.md"))
+          }).pipe(provideInstance(tmp.path))
+        }),
+      )
+    }),
+  )
+
+  itWithDisabledSkill.live("globally disables skills without hiding them from management", () =>
+    Effect.gen(function* () {
+      const tmp = yield* Effect.acquireRelease(
+        Effect.promise(() => tmpdir({ git: true })),
+        (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+      )
+
+      yield* withHome(
+        tmp.path,
+        Effect.gen(function* () {
+          yield* Effect.promise(() => createGlobalSkill(tmp.path))
+          yield* Effect.gen(function* () {
+            const skill = yield* Skill.Service
+            expect((yield* skill.installed()).some((item) => item.name === "global-test-skill")).toBeTrue()
+            expect((yield* skill.all()).some((item) => item.name === "global-test-skill")).toBeFalse()
+            expect(yield* skill.get("global-test-skill")).toBeUndefined()
+            expect((yield* skill.available()).some((item) => item.name === "global-test-skill")).toBeFalse()
+            expect(yield* Effect.flip(skill.require("global-test-skill"))).toBeInstanceOf(Skill.NotFoundError)
           }).pipe(provideInstance(tmp.path))
         }),
       )

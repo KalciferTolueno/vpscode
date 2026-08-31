@@ -110,7 +110,7 @@ export function PromptInputV2(props: PromptInputV2Props) {
       <form
         data-component="prompt-input-v2"
         data-dock-border-underlay={props.borderUnderlay ? "v2" : undefined}
-        class="group/prompt-input relative min-h-[96px] w-full overflow-clip rounded-xl bg-v2-background-bg-base"
+        class="group/prompt-input relative min-h-[96px] w-full overflow-clip rounded-[3px] bg-v2-background-bg-base"
         classList={{
           "shadow-[var(--v2-elevation-raised)]": !props.borderUnderlay,
           "border border-v2-icon-icon-info border-dashed": state.drag === "active",
@@ -125,7 +125,7 @@ export function PromptInputV2(props: PromptInputV2Props) {
         onDrop={props.controller.onDrop}
       >
         <Show when={state.drag === "active"}>
-          <div class="pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-xl bg-v2-background-bg-base/90 text-v2-text-text-base">
+          <div class="pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-[3px] bg-v2-background-bg-base/90 text-v2-text-text-base">
             {i18n.t("ui.promptInput.dropFiles")}
           </div>
         </Show>
@@ -436,10 +436,10 @@ export function PromptInputV2Attachments(props: {
                     <img
                       src={attachment.blob.url}
                       alt={attachment.filename}
-                      class="w-[58px] h-[46px] rounded-[6px] object-cover"
+                      class="w-[58px] h-[46px] rounded-[3px] object-cover"
                       onClick={() => props.onAttachmentClick?.(attachment)}
                     />
-                    <div class="absolute inset-0 rounded-[6px] shadow-[inset_0_0_0_0.5px_var(--v2-border-border-base)] pointer-events-none" />
+                    <div class="absolute inset-0 rounded-[3px] shadow-[inset_0_0_0_0.5px_var(--v2-border-border-base)] pointer-events-none" />
                   </Show>
                 </TooltipV2>
                 <button
