@@ -7,6 +7,9 @@ ENV HUSKY=0 \
 
 WORKDIR /src
 COPY . .
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends g++ make python3 \
+    && rm -rf /var/lib/apt/lists/*
 RUN bun install --frozen-lockfile
 RUN bun run --cwd packages/opencode build --single --skip-install \
     && mkdir -p /out \
