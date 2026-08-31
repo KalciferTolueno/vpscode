@@ -1,0 +1,21 @@
+services:
+  vpscode:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      OPENCODE_DISABLE_EMBEDDED_WEB_UI: "false"
+      OPENCODE_SERVER_USERNAME: "${OPENCODE_SERVER_USERNAME:-opencode}"
+      OPENCODE_SERVER_PASSWORD: "${OPENCODE_SERVER_PASSWORD:?Set OPENCODE_SERVER_PASSWORD}"
+    expose:
+      - "4096"
+    volumes:
+      - vpscode-data:/root/.local/share/opencode
+      - vpscode-config:/root/.config/opencode
+      - vpscode-workspace:/workspace
+
+volumes:
+  vpscode-data:
+  vpscode-config:
+  vpscode-workspace:
