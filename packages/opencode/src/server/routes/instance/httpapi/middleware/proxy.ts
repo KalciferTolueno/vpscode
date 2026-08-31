@@ -3,6 +3,7 @@ import { Effect, Stream } from "effect"
 import { HttpBody, HttpClient, HttpClientRequest, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import * as Socket from "effect/unstable/socket/Socket"
 import { WebSocketTracker } from "../websocket-tracker"
+import { injectHtmlScript } from "./inject-html-script"
 
 function requestBody(request: HttpServerRequest.HttpServerRequest) {
   if (request.method === "GET" || request.method === "HEAD") return HttpBody.empty
@@ -85,6 +86,7 @@ export function http(
   url: string | URL,
   extra: HeadersInit | undefined,
   request: HttpServerRequest.HttpServerRequest,
+  script?: string,
 ): Effect.Effect<HttpServerResponse.HttpServerResponse> {
   return Effect.gen(function* () {
     const response = yield* client.execute(
@@ -113,6 +115,18 @@ export function http(
         body: body.slice(0, 2000),
       })
       return HttpServerResponse.text(body, {
+        status: response.status,
+        statusText: statusText(response),
+        headers,
+        contentType,
+      })
+    }
+
+    const contentType = response.headers["content-type"]
+    if (script && request.method === "GET" && contentType?.includes("text/html")) {
+      const body = yield* response.text
+      headers.delete("content-type")
+      return HttpServerResponse.text(injectHtmlScript(body, script), {
         status: response.status,
         statusText: statusText(response),
         headers,

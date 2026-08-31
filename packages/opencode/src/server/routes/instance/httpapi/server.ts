@@ -192,6 +192,16 @@ const docRoute = HttpRouter.use((router) => router.add("GET", "/doc", () => Effe
   Layer.provide(authOnlyRouterLayer),
 )
 
+const previewConsoleScript = `(function(){
+  if(window.__ocCon)return;window.__ocCon=true;
+  function send(level,text,source){try{parent.postMessage({type:"opencode-preview-console",level:level,text:String(text).slice(0,500),source:source||""},window.location.origin)}catch(e){}}
+  var ce=console.error,cw=console.warn;
+  console.error=function(){send("error",Array.prototype.map.call(arguments,String).join(" "),"console.error");ce.apply(console,arguments)};
+  console.warn=function(){send("warn",Array.prototype.map.call(arguments,String).join(" "),"console.warn");cw.apply(console,arguments)};
+  window.addEventListener("error",function(e){var t=e.target;if(t&&t!==window&&t.tagName&&(t.tagName==="IMG"||t.tagName==="SCRIPT"||t.tagName==="LINK"||t.tagName==="VIDEO"||t.tagName==="AUDIO")){send("error","Failed resource: "+(t.src||t.href||t.tagName),"network")}else{send("error",e.message||"Error","window.onerror")}},true);
+  window.addEventListener("unhandledrejection",function(e){send("error",e.reason&&e.reason.message?e.reason.message:String(e.reason||"rejected"),"promise")});
+})()`
+
 const previewRoute = HttpRouter.use((router) =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient
@@ -203,7 +213,7 @@ const previewRoute = HttpRouter.use((router) =>
         return Effect.succeed(HttpServerResponse.empty({ status: 404 }))
       const target = new URL(`${match[2] ?? "/"}${source.search}`, `http://127.0.0.1:${port}`)
       if (request.headers.upgrade?.toLowerCase() === "websocket") return HttpApiProxy.websocket(request, target)
-      return HttpApiProxy.http(client, target, { host: target.host }, request)
+      return HttpApiProxy.http(client, target, { host: target.host }, request, previewConsoleScript)
     })
   }),
 ).pipe(Layer.provide(authOnlyRouterLayer), Layer.provide(Socket.layerWebSocketConstructorGlobal))

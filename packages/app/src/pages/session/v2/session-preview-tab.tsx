@@ -45,6 +45,7 @@ const PICKER_SCRIPT = `
   if (window.__ocPickActive) return
   window.__ocPickActive = true
   var style = document.createElement("style")
+  style.id = "__opencode_pick_style__"
   style.textContent = "html.__ocPick, html.__ocPick *{cursor:crosshair!important}"
   document.head.appendChild(style)
   document.documentElement.classList.add("__ocPick")
@@ -96,12 +97,14 @@ const PICKER_SCRIPT = `
     style.remove()
     document.documentElement.classList.remove("__ocPick")
     window.__ocPickActive = false
+    delete window.__ocPickCancel
     parent.postMessage({
       type: "opencode-preview-pick",
       picked: picked,
       summary: picked && el ? summary(el) + " — css: " + path(el) : null,
     }, window.location.origin)
   }
+  window.__ocPickCancel = function(){ done(false, null) }
   function onMove(e){ if(e.target instanceof HTMLElement) find(e.target) }
   function onClick(e){
     e.preventDefault()
@@ -356,27 +359,18 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
   const injectConsole = () => {
     if (!sameOrigin()) return
     const doc = iframe?.contentDocument
-    if (!doc || (doc as unknown as { __ocCon?: boolean }).__ocCon) return
+    if (!doc || (iframe?.contentWindow as (Window & { __ocCon?: boolean }) | null)?.__ocCon) return
     const script = doc.createElement("script")
     script.textContent = CONSOLE_SCRIPT
     doc.head.appendChild(script)
     script.remove()
   }
 
-  const cleanIframe = () => {
-    const doc = iframe?.contentDocument
-    if (doc?.documentElement.classList.contains("__ocPick")) {
-      doc.getElementById("__opencode_pick_style__")?.remove()
-      doc.documentElement.classList.remove("__ocPick")
-    }
-  }
-
   const togglePick = () => {
     const doc = iframe?.contentDocument
     if (!doc) return
     if (picking()) {
-      cleanIframe()
-      setPicking(false)
+      ;(iframe?.contentWindow as (Window & { __ocPickCancel?: () => void }) | null)?.__ocPickCancel?.()
       return
     }
     const script = doc.createElement("script")
@@ -397,6 +391,15 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
   }
 
   const errorCount = () => consoleEntries().filter((e) => e.level === "error").length
+
+  const sendErrors = () => {
+    if (!consoleEntries().length) return
+    insertElementChip(
+      ` [${language.t("session.preview.console")}:\n${consoleEntries()
+        .map((entry) => `- ${entry.source ? `${entry.source}: ` : ""}${entry.text}`)
+        .join("\n")}] `,
+    )
+  }
 
   const onMessage = (event: MessageEvent) => {
     if (event.origin !== location.origin) return
@@ -471,7 +474,7 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
           aria-label={language.t("session.preview.forward")}
         />
         <IconButton
-          icon="arrow-undo-down"
+          icon="refresh"
           variant="ghost"
           class="h-6 w-6"
           onClick={() => setNonce((n) => n + 1)}
@@ -510,12 +513,13 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
         />
         <div class="relative">
           <IconButton
-            icon="speech-bubble"
+            icon="console"
             variant="ghost"
             class="h-6 w-6"
-            classList={{ "bg-background-stronger": consoleOpen() }}
+            classList={{ "!bg-v2-overlay-simple-overlay-hover": consoleOpen() }}
             onClick={() => setConsoleOpen((o) => !o)}
             aria-label={language.t("session.preview.console")}
+            aria-pressed={consoleOpen()}
           />
           <Show when={consoleEntries().length > 0}>
             <span class="absolute -top-1 -right-1 rounded-full bg-text-on-critical-base px-1 leading-3 text-10-regular text-white">
@@ -527,10 +531,11 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
           icon="magnifying-glass"
           variant="ghost"
           class="h-6 w-6"
-          classList={{ "bg-background-stronger": picking() }}
+          classList={{ "!bg-v2-overlay-simple-overlay-hover": picking() }}
           disabled={!sameOrigin()}
           onClick={togglePick}
           aria-label={language.t("session.preview.pickElement")}
+          aria-pressed={picking()}
         />
         <IconButton
           icon="square-arrow-top-right"
@@ -552,7 +557,10 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
         >
           <iframe
             ref={(el) => (iframe = el)}
-            onLoad={injectConsole}
+            onLoad={() => {
+              setPicking(false)
+              injectConsole()
+            }}
             class="h-full border-0 bg-white"
             style={{ width: width() }}
             src={src()}
@@ -562,6 +570,17 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
       </div>
       <Show when={consoleOpen()}>
         <div class="shrink-0 max-h-40 overflow-auto border-t border-border-weaker-base bg-background-stronger px-2 py-1.5 space-y-0.5 font-mono text-11-regular">
+          <div class="sticky top-0 flex items-center justify-between bg-background-stronger pb-1 text-12-medium text-text-weak">
+            <span>{language.t("session.preview.console")}</span>
+            <IconButton
+              icon="prompt"
+              variant="ghost"
+              class="h-6 w-6"
+              disabled={!consoleEntries().length}
+              onClick={sendErrors}
+              aria-label={language.t("prompt.action.send")}
+            />
+          </div>
           <For
             each={consoleEntries()}
             fallback={

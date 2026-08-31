@@ -647,6 +647,7 @@ function TitlebarUpdateIconButton(props: { state: TitlebarUpdatePillState }) {
 
 function ChannelIndicator(props: { debugTools?: { visible: boolean; toggle: () => void } }) {
   const channel = import.meta.env.VITE_OPENCODE_CHANNEL
+  if (channel === "dev" && !import.meta.env.DEV) return null
   if (channel === "dev" && props.debugTools) {
     return (
       <button
