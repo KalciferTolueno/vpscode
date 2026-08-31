@@ -186,6 +186,7 @@ class AsciiFilter {
       str += "\n"
     }
     this.pre.textContent = str
+    this.domElement.dataset.asciiReady = /[^\s]/.test(str) ? "true" : "false"
   }
 
   dispose() {

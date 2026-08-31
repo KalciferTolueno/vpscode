@@ -525,6 +525,14 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
     })
 
     createEffect(() => {
+      if (!serverSync().ready) return
+      const worktree = serverSync().data.project.find((project) => project.name === "Default")?.worktree
+      if (!worktree) return
+      if (server.projects.list().some((project) => pathKey(project.worktree) === pathKey(worktree))) return
+      server.projects.open(worktree)
+    })
+
+    createEffect(() => {
       const projects = enriched()
       if (projects.length === 0) return
       if (!serverSync().ready) return

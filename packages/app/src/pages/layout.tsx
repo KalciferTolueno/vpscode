@@ -546,6 +546,11 @@ export default function LegacyLayout(props: ParentProps) {
     const last = server.projects.last()
 
     if (list.length === 0) {
+      const fallback = serverSync().data.project.find((project) => project.name === "Default")?.worktree
+      if (fallback) {
+        await openProject(fallback, true)
+        return
+      }
       if (!last) return
       await openProject(last, true)
     } else {

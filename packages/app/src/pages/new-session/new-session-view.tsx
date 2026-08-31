@@ -39,7 +39,7 @@ export function NewSessionView(props: {
       >
         <div class="absolute inset-x-0 top-[25.375%] flex justify-center px-6">
           <div class={NEW_SESSION_CONTENT_WIDTH}>
-            <div class="relative w-full h-[220px]" role="img" aria-label="vpscode">
+            <div class="relative w-full h-[140px] sm:h-[220px]" role="img" aria-label="vpscode">
               <ASCIIText text="vpscode" enableWaves={false} asciiFontSize={6} textFontSize={240} />
             </div>
             <div class="mt-8 flex flex-col gap-8">

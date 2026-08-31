@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createSignal, onCleanup } from "solid-js"
+import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { useLanguage } from "@/context/language"
 import { previewIframeSrc } from "./preview-url"
@@ -72,10 +72,14 @@ function insertElementChip(fullText: string) {
 }
 
 const PRESETS = [
-  { key: "desktop", icon: "layout-right", width: 0, height: 0 },
+  { key: "desktop", icon: "layout-right", width: 1280, height: 720 },
   { key: "tablet", icon: "layout-right-partial", width: 768, height: 1024 },
   { key: "mobile", icon: "layout-right", width: 390, height: 844 },
 ] as const
+
+const ZOOM_MIN = 0.5
+const ZOOM_MAX = 2
+const ZOOM_STEP = 0.25
 
 type ConsoleEntry = { level: "error" | "warn" | "log"; text: string; source: string; ts: number }
 
@@ -91,12 +95,6 @@ function consoleMark(level: ConsoleEntry["level"]) {
   return { class: "text-text-base", mark: "·" }
 }
 
-function openUrl(value: string) {
-  const src = previewIframeSrc(value)
-  if (!src) return
-  window.open(new URL(src, location.origin).toString(), "_blank", "noopener")
-}
-
 export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) {
   const language = useLanguage()
   const [url, setUrl] = createSignal(initialUrl(props.sessionKey, props.tabId))
@@ -106,8 +104,11 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
   const [canBack, setCanBack] = createSignal(false)
   const [canForward, setCanForward] = createSignal(false)
   const [preset, setPreset] = createSignal<(typeof PRESETS)[number]["key"]>("desktop")
+  const [zoom, setZoom] = createSignal(1)
+  const [viewport, setViewport] = createSignal({ w: 0, h: 0 })
   const [consoleOpen, setConsoleOpen] = createSignal(false)
   const [consoleEntries, setConsoleEntries] = createSignal<ConsoleEntry[]>([])
+  const [stageEl, setStageEl] = createSignal<HTMLDivElement>()
   let frame: HTMLIFrameElement | undefined
   let eCurrent: HTMLInputElement | undefined
   let history = url() ? [url()] : []
@@ -242,23 +243,41 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
   window.addEventListener("message", onWindowMessage)
   onCleanup(() => window.removeEventListener("message", onWindowMessage))
 
+  createEffect(() => {
+    const el = stageEl()
+    if (!el) return
+    const measure = () => setViewport({ w: el.clientWidth, h: el.clientHeight })
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    onCleanup(() => ro.disconnect())
+  })
+
   const currentPreset = () => PRESETS.find((item) => item.key === preset()) ?? PRESETS[0]
 
-  const frameStyle = () => {
+  const frameLayout = createMemo(() => {
     const next = currentPreset()
-    if (!next.width) return { width: "100%", height: "100%" }
+    const pad = 16
+    const availW = Math.max(viewport().w - pad, 1)
+    const availH = Math.max(viewport().h - pad, 1)
+    const fit = Math.min(availW / next.width, availH / next.height)
+    const scale = Math.max(0.05, fit * zoom())
     return {
-      width: `${next.width}px`,
-      height: `${next.height}px`,
-      "max-width": "100%",
-      "max-height": "100%",
-      "aspect-ratio": `${next.width} / ${next.height}`,
+      vw: next.width,
+      vh: next.height,
+      scale,
+      shellW: next.width * scale,
+      shellH: next.height * scale,
     }
-  }
+  })
 
   const cycleWidth = () => {
     const idx = PRESETS.findIndex((item) => item.key === preset())
     setPreset(PRESETS[(idx + 1) % PRESETS.length].key)
+  }
+
+  const nudgeZoom = (delta: number) => {
+    setZoom((value) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((value + delta) * 100) / 100)))
   }
 
   const widthLabel = () => language.t(`session.preview.responsive.${currentPreset().key}`)
@@ -377,18 +396,16 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
           aria-label={language.t("session.preview.pickElement")}
           aria-pressed={picking()}
         />
-        <IconButton
-          icon="square-arrow-top-right"
-          variant="ghost"
-          class="h-6 w-6"
-          disabled={!iframeSrc()}
-          onClick={() => openUrl(url())}
-          aria-label={language.t("session.preview.openExternal")}
-        />
       </div>
-      <div class="flex-1 min-h-0 relative overflow-hidden bg-v2-background-bg-deep">
-        <div class="absolute inset-0 grid place-items-center overflow-hidden">
-          <div class="border-0 bg-white relative overflow-hidden" style={frameStyle()}>
+      <div ref={setStageEl} class="flex-1 min-h-0 relative overflow-hidden bg-v2-background-bg-deep">
+        <div class="absolute inset-0 overflow-auto p-2 flex items-[safe_center] justify-[safe_center]">
+          <div
+            class="relative shrink-0 overflow-hidden bg-white border border-v2-border-border-base"
+            style={{
+              width: `${frameLayout().shellW}px`,
+              height: `${frameLayout().shellH}px`,
+            }}
+          >
             <Show
               when={iframeSrc()}
               fallback={
@@ -400,7 +417,12 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
               <iframe
                 ref={(el) => (frame = el)}
                 src={iframeSrc()}
-                class="h-full w-full border-0 bg-white"
+                class="absolute top-0 left-0 border-0 bg-white origin-top-left"
+                style={{
+                  width: `${frameLayout().vw}px`,
+                  height: `${frameLayout().vh}px`,
+                  transform: `scale(${frameLayout().scale})`,
+                }}
                 title={language.t("session.tab.browser")}
                 onLoad={onFrameLoad}
               />
@@ -439,6 +461,27 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
             </For>
           </div>
         </Show>
+      </div>
+      <div class="shrink-0 flex items-center justify-center gap-1 px-2 py-1.5 border-t border-v2-border-border-base bg-v2-background-bg-base">
+        <IconButton
+          icon="minus-small"
+          variant="ghost"
+          class="h-6 w-6"
+          disabled={zoom() <= ZOOM_MIN}
+          onClick={() => nudgeZoom(-ZOOM_STEP)}
+          aria-label={language.t("session.preview.zoomOut")}
+        />
+        <span class="min-w-10 text-center text-12-regular text-v2-text-text-weak" aria-label={language.t("session.preview.zoom")}>
+          {Math.round(zoom() * 100)}%
+        </span>
+        <IconButton
+          icon="plus-small"
+          variant="ghost"
+          class="h-6 w-6"
+          disabled={zoom() >= ZOOM_MAX}
+          onClick={() => nudgeZoom(ZOOM_STEP)}
+          aria-label={language.t("session.preview.zoomIn")}
+        />
       </div>
     </div>
   )

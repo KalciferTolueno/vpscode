@@ -84,6 +84,7 @@ import {
   sessionPanelWidthMax,
 } from "@/pages/session/session-panel-width"
 import { SessionProjectNav } from "@/pages/session/project-nav"
+import { SessionPreviewTab } from "@/pages/session/v2/session-preview-tab"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { sessionPanelLayout } from "@/pages/session/session-panel-layout"
 import { SessionReviewEmptyChangesV2 } from "@opencode-ai/session-ui/v2/session-review-empty-changes-v2"
@@ -116,7 +117,7 @@ type VcsMode = "git" | "branch"
 
 const sessionViewState = () => ({
   messageId: undefined as string | undefined,
-  mobileTab: "session" as "session" | "changes",
+  mobileTab: "session" as "session" | "changes" | "browser",
 })
 
 function isCurrentSessionNotFoundError(error: unknown, sessionID: string | undefined) {
@@ -686,6 +687,7 @@ export default function Page() {
     return list
   })
   const mobileChanges = createMemo(() => !isDesktop() && store.mobileTab === "changes")
+  const mobileBrowser = createMemo(() => !isDesktop() && store.mobileTab === "browser")
   const wantsReview = createMemo(() =>
     isDesktop()
       ? desktopFileTreeOpen() ||
@@ -2066,24 +2068,24 @@ export default function Page() {
           {language.t("session.tab.session")}
         </Tabs.Trigger>
         <Tabs.Trigger
-          value="changes"
+          value={newSessionDesign() ? "browser" : "changes"}
           classList={{
             "!w-1/2 !max-w-none !border-r-0": true,
             "!border-b-0 !border-t !border-border-weak-base [&:has([data-selected])]:!border-t-transparent": bottom,
           }}
           classes={{ button: compact ? "w-full !py-2" : "w-full" }}
-          onClick={() => setStore("mobileTab", "changes")}
+          onClick={() => setStore("mobileTab", newSessionDesign() ? "browser" : "changes")}
         >
-          {hasReview()
-            ? language.t("session.review.filesChanged", { count: reviewCount() })
-            : language.t("session.review.change.other")}
+          {newSessionDesign()
+            ? language.t("session.tab.browser")
+            : hasReview()
+              ? language.t("session.review.filesChanged", { count: reviewCount() })
+              : language.t("session.review.change.other")}
         </Tabs.Trigger>
       </Tabs.List>
     </Tabs>
   )
-  const mobileTabsBottom = createMemo(
-    () => !isDesktop() && settings.general.newLayoutDesigns() && settings.general.mobileTitlebarPosition() === "bottom",
-  )
+  const mobileTabsBottom = createMemo(() => !isDesktop() && settings.general.newLayoutDesigns())
 
   const sessionErrorFallback = (error: unknown, reset: () => void) => {
     createEffect(on(sessionKey, reset, { defer: true }))
@@ -2098,6 +2100,11 @@ export default function Page() {
       </Show>
       <div class="flex-1 min-h-0 overflow-hidden">
         <Switch>
+          <Match when={params.id && mobileBrowser()}>
+            <div class="relative h-full min-h-0 overflow-hidden">
+              <SessionPreviewTab tabId="browser" sessionKey={sessionKey()} />
+            </div>
+          </Match>
           <Match when={params.id && mobileChanges()}>
             <div class="relative h-full overflow-hidden">
               {reviewContent({
@@ -2160,7 +2167,7 @@ export default function Page() {
         </Switch>
       </div>
 
-      <Show when={(params.id || !newSessionDesign()) && !mobileChanges()}>
+      <Show when={(params.id || !newSessionDesign()) && !mobileChanges() && !mobileBrowser()}>
         {(_) => {
           const controller = createSessionComposerRegionController({
             state: composer,

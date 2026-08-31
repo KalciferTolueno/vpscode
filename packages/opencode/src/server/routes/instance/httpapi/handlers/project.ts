@@ -13,6 +13,10 @@ export const projectHandlers = HttpApiBuilder.group(InstanceHttpApi, "project", 
     const project = yield* ProjectV2.Service
 
     const list = Effect.fn("ProjectHttpApi.list")(function* () {
+      yield* svc.ensureDefault().pipe(
+        Effect.catchCause((cause) => Effect.logWarning("ensure default project failed", { cause })),
+        Effect.ignore,
+      )
       return yield* svc.list()
     })
 

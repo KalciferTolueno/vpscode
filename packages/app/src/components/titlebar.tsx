@@ -415,7 +415,7 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                 <Show when={windows() || linux()}>
                   <WindowsAppMenu command={command} platform={platform} variant="v2" />
                 </Show>
-                <div id="opencode-titlebar-project-nav" class="flex shrink-0 items-center empty:hidden" />
+                <div id="opencode-titlebar-project-nav" class="hidden md:flex shrink-0 items-center empty:hidden" />
                 <TooltipV2
                   placement="bottom"
                   value={

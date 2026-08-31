@@ -60,6 +60,7 @@ const names = [
   "file-tree-active",
   "magnifying-glass",
   "plus-small",
+  "minus-small",
   "plus",
   "new-session",
   "pencil-line",

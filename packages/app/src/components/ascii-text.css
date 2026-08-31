@@ -7,6 +7,26 @@
   pointer-events: none;
 }
 
+.ascii-text-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace;
+  font-size: clamp(2.25rem, 14vw, 5.5rem);
+  font-weight: 600;
+  letter-spacing: -0.08em;
+  line-height: 1;
+  color: var(--v2-background-bg-inverse);
+  opacity: 0.72;
+}
+
+.ascii-text-container:has([data-ascii-ready="true"]) .ascii-text-fallback {
+  display: none;
+}
+
 .ascii-text-container canvas {
   display: none;
 }

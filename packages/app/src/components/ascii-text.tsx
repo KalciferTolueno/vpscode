@@ -1,4 +1,4 @@
-import { createEffect, mergeProps, onCleanup } from "solid-js"
+import { createEffect, createSignal, mergeProps, onCleanup } from "solid-js"
 import { CanvAscii, type CanvAsciiOptions } from "./ascii-text-engine"
 import "./ascii-text.css"
 
@@ -20,8 +20,6 @@ const defaults = {
   enableWaves: true,
 }
 
-let shared: CanvAscii | null = null
-
 function optionsOf(props: Required<ASCIITextProps>): CanvAsciiOptions {
   return {
     text: props.text,
@@ -41,55 +39,49 @@ function measure(el: HTMLDivElement) {
   }
 }
 
-function acquire(el: HTMLDivElement, props: Required<ASCIITextProps>) {
+function createEngine(el: HTMLDivElement, props: Required<ASCIITextProps>) {
   const size = measure(el)
   if (size.width < 1 || size.height < 1) return
-  if (shared) {
-    shared.attach(el, size.width, size.height)
-    shared.load()
-    return shared
+  try {
+    const instance = new CanvAscii(optionsOf(props), el, size.width, size.height)
+    instance.init()
+    instance.load()
+    return instance
+  } catch {
+    return
   }
-  const instance = new CanvAscii(optionsOf(props), el, size.width, size.height)
-  instance.init()
-  instance.load()
-  shared = instance
-  return instance
 }
 
 export function ASCIIText(raw: ASCIITextProps) {
   const props = mergeProps(defaults, raw)
-
-  let container!: HTMLDivElement
+  const [container, setContainer] = createSignal<HTMLDivElement>()
 
   createEffect(() => {
-    const el = container
+    const el = container()
     if (!el) return
+    let instance = createEngine(el, props)
     const ro = new ResizeObserver((entries) => {
       const entry = entries[0]
       if (!entry) return
       const width = entry.contentRect.width
       const height = entry.contentRect.height
       if (width < 1 || height < 1) return
-      if (!shared) {
-        acquire(el, props)
+      if (!instance) {
+        instance = createEngine(el, props)
         return
       }
-      shared.setSize(width, height)
+      instance.setSize(width, height)
     })
     ro.observe(el)
-    onCleanup(() => ro.disconnect())
+    onCleanup(() => {
+      ro.disconnect()
+      instance?.dispose()
+    })
   })
 
-  onCleanup(() => shared?.detach())
-
   return (
-    <div
-      ref={(el) => {
-        container = el
-        if (el) acquire(el, props)
-      }}
-      class="ascii-text-container"
-      aria-hidden="true"
-    />
+    <div ref={setContainer} class="ascii-text-container" aria-hidden="true">
+      <div class="ascii-text-fallback">{props.text}</div>
+    </div>
   )
 }

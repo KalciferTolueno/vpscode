@@ -22,6 +22,8 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { EventV2 } from "@opencode-ai/core/event"
 import { Project } from "@opencode-ai/schema/project"
+import { Global } from "@opencode-ai/core/global"
+import path from "path"
 
 export const Info = Project.Info
 export type Info = Types.DeepMutable<Schema.Schema.Type<typeof Info>>
@@ -93,6 +95,7 @@ export interface Interface {
   readonly get: (id: ProjectV2.ID) => Effect.Effect<Info | undefined>
   readonly update: (input: UpdateInput) => Effect.Effect<Info, NotFoundError>
   readonly initGit: (input: { directory: string; project: Info }) => Effect.Effect<Info>
+  readonly ensureDefault: () => Effect.Effect<Info | undefined>
   readonly setInitialized: (id: ProjectV2.ID) => Effect.Effect<void>
   readonly sandboxes: (id: ProjectV2.ID) => Effect.Effect<string[]>
   readonly addSandbox: (id: ProjectV2.ID, directory: string) => Effect.Effect<void>
@@ -374,6 +377,36 @@ const layer = Layer.effect(
       return project
     })
 
+    const ensureDefault = Effect.fn("Project.ensureDefault")(function* () {
+      const directory = path.join(Global.Path.data, "default")
+      const resolved = AbsolutePath.make(FSUtil.resolve(directory))
+      const existing = yield* db
+        .select()
+        .from(ProjectTable)
+        .where(eq(ProjectTable.worktree, resolved))
+        .get()
+        .pipe(Effect.orDie)
+      if (existing?.name) return fromRow(existing)
+      yield* fs.makeDirectory(directory, { recursive: true }).pipe(Effect.orDie)
+      const gitDir = path.join(directory, ".git")
+      const hasGit = yield* fs.exists(gitDir).pipe(Effect.orDie)
+      if (!hasGit && which("git")) {
+        const init = yield* git(["init", "--quiet"], { cwd: directory })
+        if (init.code === 0) {
+          yield* git(["config", "user.email", "vpscode@localhost"], { cwd: directory })
+          yield* git(["config", "user.name", "vpscode"], { cwd: directory })
+          yield* git(["config", "commit.gpgsign", "false"], { cwd: directory })
+          yield* git(["commit", "--allow-empty", "-m", "Default"], { cwd: directory })
+        }
+      }
+      const { project } = yield* fromDirectory(directory)
+      if (FSUtil.resolve(project.worktree) !== FSUtil.resolve(directory) && project.id === ProjectV2.ID.global) return
+      if (project.name) return project
+      return yield* update({ projectID: project.id, name: "Default" }).pipe(
+        Effect.catchTag("Project.NotFoundError", () => Effect.succeed({ ...project, name: "Default" })),
+      )
+    })
+
     const setInitialized = Effect.fn("Project.setInitialized")(function* (id: ProjectV2.ID) {
       yield* db
         .update(ProjectTable)
@@ -455,6 +488,7 @@ const layer = Layer.effect(
       get,
       update,
       initGit,
+      ensureDefault,
       setInitialized,
       sandboxes,
       addSandbox,
