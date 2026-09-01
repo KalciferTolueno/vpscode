@@ -63,7 +63,11 @@ export function useTitlebarRightMount() {
   return mount
 }
 
-export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visible: boolean; toggle: () => void } }) {
+export function Titlebar(props: {
+  update?: TitlebarUpdate
+  debugTools?: { visible: boolean; toggle: () => void }
+  mobileNav?: { open: () => boolean; toggle: () => void }
+}) {
   const layout = useLayout()
   const platform = usePlatform()
   const command = useCommand()
@@ -346,7 +350,14 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
               tabs.newDraft({ server: fallback.server, directory: fallback.project.worktree }, "")
             }
             const idle = () => isIdleRoute(layout.route())
-            const toggleHome = () => tabs.toggleHome({ home: idle(), current: currentTab() })
+            const homePressed = () => (mobile() && props.mobileNav ? props.mobileNav.open() : idle())
+            const toggleHome = () => {
+              if (mobile() && props.mobileNav) {
+                props.mobileNav.toggle()
+                return
+              }
+              tabs.toggleHome({ home: idle(), current: currentTab() })
+            }
 
             command.register("titlebar-home", () => [
               {
@@ -423,10 +434,10 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                     size="large"
                     class="!w-9 shrink-0"
                     icon={<IconV2 name="grid-plus" />}
-                    state={idle() ? "pressed" : undefined}
+                    state={homePressed() ? "pressed" : undefined}
                     onClick={toggleHome}
                     aria-label={language.t("home.title")}
-                    aria-pressed={idle()}
+                    aria-pressed={homePressed()}
                   />
                 </TooltipV2>
 

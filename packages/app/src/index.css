@@ -357,6 +357,12 @@ html {
   margin-inline-start: 0.75rem;
 }
 
+[data-component="idle-nav"][data-mobile] {
+  width: auto;
+  flex: 1 1 auto;
+  margin: 0.75rem;
+}
+
 /* In-flow rail stays 3rem. The flyout is abspos and must not animate width:
    interpolating width relayouts every label and invalidates the session
    panels the flyout paints over. */

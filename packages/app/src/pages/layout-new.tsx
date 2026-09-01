@@ -1,5 +1,6 @@
-import { createEffect, createMemo, Show, Suspense, type ParentProps } from "solid-js"
+import { createEffect, createMemo, createSignal, Show, Suspense, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
+import { createMediaQuery } from "@solid-primitives/media"
 import { DebugBar } from "@/components/debug-bar"
 import { TabsInfoPopup } from "@/components/help-button"
 import { Titlebar, type TitlebarUpdate } from "@/components/titlebar"
@@ -12,9 +13,14 @@ export default function NewLayout(props: ParentProps) {
   const platform = usePlatform()
   const layout = useLayout()
   const idle = createMemo(() => isIdleRoute(layout.route()))
+  const mobile = createMediaQuery("(max-width: 767px)")
+  const [mobileNav, setMobileNav] = createSignal(false)
   const [state, setState] = createStore({ debugTools: true })
 
   createEffect(() => setV2Toast(true))
+  createEffect(() => {
+    if (!mobile()) setMobileNav(false)
+  })
 
   const update: TitlebarUpdate = {
     version: () => {
@@ -41,14 +47,18 @@ export default function NewLayout(props: ParentProps) {
             ? { visible: state.debugTools, toggle: () => setState("debugTools", (value) => !value) }
             : undefined
         }
+        mobileNav={{
+          open: mobileNav,
+          toggle: () => setMobileNav((value) => !value),
+        }}
       />
       <main
         data-component="layout-main"
         class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict"
       >
         <div class="flex min-h-0 min-w-0 w-full flex-1">
-          <Show when={idle()}>
-            <IdleNav />
+          <Show when={idle() || mobileNav()}>
+            <IdleNav desktop={idle()} mobileOpen={mobileNav()} onMobileClose={() => setMobileNav(false)} />
           </Show>
           <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <Suspense
