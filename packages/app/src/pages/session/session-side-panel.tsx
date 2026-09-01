@@ -190,6 +190,7 @@ export function SessionSidePanel(props: {
   createEffect(() => {
     if (!props.fileBrowserState) return
     if (!open()) return
+    if (browserOpen()) return
     tabs().open("browser")
   })
 

@@ -1,4 +1,4 @@
-import { createStore, produce, reconcile } from "solid-js/store"
+import { createStore, produce, reconcile, unwrap } from "solid-js/store"
 import { batch, createEffect, createMemo, onCleanup, onMount, type Accessor } from "solid-js"
 import { useLocation } from "@solidjs/router"
 import { createSimpleContext } from "@opencode-ai/ui/context"
@@ -20,7 +20,7 @@ import { migrateLegacySessionStateKeys, ServerScope, SessionStateKey } from "@/u
 import { createSessionKeyReader, ensureSessionKey, pruneSessionKeys } from "./layout-helpers"
 import { requireServerKey } from "@/utils/session-route"
 import { type DraftTab, useTabs } from "./tabs"
-import { closeSessionTab, openSessionTab, previewSessionTab, type SessionTabs } from "./layout-tabs"
+import { closeSessionTab, openSessionTab, previewSessionTab, sessionTabsEqual, snapshotSessionTabs, type SessionTabs } from "./layout-tabs"
 
 export { createSessionKeyReader, ensureSessionKey, pruneSessionKeys }
 
@@ -1009,7 +1009,12 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         const tabs = createMemo(() => store.sessionTabs[key()] ?? { all: [] })
         const normalize = (tab: string) => normalizeSessionTab(path(), tab)
         const normalizeAll = (all: string[]) => normalizeSessionTabList(path(), all)
-        const apply = (session: string, next: ReturnType<typeof openSessionTab>) => {
+        const currentTabs = (session: string) => {
+          const stored = store.sessionTabs[session]
+          return snapshotSessionTabs(stored ? unwrap(stored) : undefined)
+        }
+        const apply = (session: string, previous: SessionTabs, next: ReturnType<typeof openSessionTab>) => {
+          if (sessionTabsEqual(previous, next.tabs) && ephemeral.sessionTabPreview[session] === next.preview) return
           batch(() => {
             setStore("sessionTabs", session, next.tabs)
             setEphemeral("sessionTabPreview", session, next.preview)
@@ -1044,38 +1049,29 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           async open(tab: string) {
             const session = key()
-            const current = store.sessionTabs[session]
+            const current = currentTabs(session)
             apply(
               session,
-              openSessionTab(
-                {
-                  tabs: current ? { all: current.all.slice(), active: current.active } : { all: [] },
-                  preview: ephemeral.sessionTabPreview[session],
-                },
-                normalize(tab),
-              ),
+              current,
+              openSessionTab({ tabs: current, preview: ephemeral.sessionTabPreview[session] }, normalize(tab)),
             )
           },
           previewTab(tab: string) {
             const session = key()
-            const current = store.sessionTabs[session]
+            const current = currentTabs(session)
             apply(
               session,
-              previewSessionTab(
-                {
-                  tabs: current ? { all: current.all.slice(), active: current.active } : { all: [] },
-                  preview: ephemeral.sessionTabPreview[session],
-                },
-                normalize(tab),
-              ),
+              current,
+              previewSessionTab({ tabs: current, preview: ephemeral.sessionTabPreview[session] }, normalize(tab)),
             )
           },
           close(tab: string) {
             const session = key()
-            const current = store.sessionTabs[session]
-            if (!current) return
+            const current = currentTabs(session)
+            if (current.all.length === 0) return
             apply(
               session,
+              current,
               closeSessionTab({ tabs: current, preview: ephemeral.sessionTabPreview[session] }, normalize(tab)),
             )
           },

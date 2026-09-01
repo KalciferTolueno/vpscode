@@ -82,7 +82,8 @@ test("rewrites Vite root-absolute assets onto the preview prefix", () => {
   expect(html.indexOf("importmap")).toBeLessThan(html.indexOf('src="/preview/5173/src/main.tsx"'))
 })
 
-test("an IPv6-only server is reachable through at least one preview loopback host", async () => {
+test("an IPv6-only server is reachable through the IPv6 preview loopback host", async () => {
+  expect(PREVIEW_LOOPBACK_HOSTS.includes("[::1]")).toBe(true)
   const server = Bun.serve({
     hostname: "::1",
     port: 0,
@@ -93,18 +94,9 @@ test("an IPv6-only server is reachable through at least one preview loopback hos
   try {
     const port = server.port
     if (port === undefined) throw new Error("expected ephemeral port")
-    const hits = await Promise.all(
-      PREVIEW_LOOPBACK_HOSTS.map(async (host) => {
-        try {
-          const response = await fetch(previewUpstreamURL(port, "/", host), { signal: AbortSignal.timeout(400) })
-          return response.ok
-        } catch {
-          return false
-        }
-      }),
-    )
-    expect(hits.some(Boolean)).toBe(true)
+    const response = await fetch(previewUpstreamURL(port, "/", "[::1]"), { signal: AbortSignal.timeout(400) })
+    expect(response.ok).toBe(true)
   } finally {
-    await server.stop(true)
+    server.stop(true)
   }
 })

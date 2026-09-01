@@ -40,6 +40,28 @@ export function previewSessionTab(current: SessionTabState, tab: string): Sessio
   }
 }
 
+export function snapshotSessionTabs(value: SessionTabs | undefined): SessionTabs {
+  if (!value) return { all: [] }
+  const source = value.all
+  const all: string[] = []
+  if (Array.isArray(source)) {
+    const limit = Math.min(source.length, 64)
+    for (let i = 0; i < limit; i++) {
+      const tab = source[i]
+      if (typeof tab === "string") all.push(tab)
+    }
+  }
+  return { all, active: typeof value.active === "string" ? value.active : undefined }
+}
+
+export function sessionTabsEqual(left: SessionTabs, right: SessionTabs) {
+  if (left.active !== right.active || left.all.length !== right.all.length) return false
+  for (let i = 0; i < left.all.length; i++) {
+    if (left.all[i] !== right.all[i]) return false
+  }
+  return true
+}
+
 export function openSessionTab(current: SessionTabState, tab: string): SessionTabState {
   const preview = sessionTabPreview(current)
   if (tab === "review") {
@@ -50,6 +72,16 @@ export function openSessionTab(current: SessionTabState, tab: string): SessionTa
   }
 
   if (tab === "context" || tab === "browser" || tab.startsWith("browser:")) {
+    if (current.tabs.active === tab && current.tabs.all[0] === tab) {
+      let dup = false
+      for (let i = 1; i < current.tabs.all.length; i++) {
+        if (current.tabs.all[i] === tab) {
+          dup = true
+          break
+        }
+      }
+      if (!dup) return current
+    }
     return {
       tabs: { all: [tab, ...current.tabs.all.filter((item) => item !== tab)], active: tab },
       preview,

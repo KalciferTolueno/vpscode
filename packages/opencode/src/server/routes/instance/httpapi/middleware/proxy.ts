@@ -192,7 +192,9 @@ export function preview(
   return Effect.firstSuccessOf(
     PREVIEW_LOOPBACK_HOSTS.map((host) => {
       const target = previewUpstreamURL(port, pathWithSearch, host)
-      return httpAttempt(client, target, { host: target.host }, request, script ? { port, script } : undefined)
+      return httpAttempt(client, target, { host: target.host }, request, script ? { port, script } : undefined).pipe(
+        Effect.timeout("2 seconds"),
+      )
     }),
   ).pipe(Effect.catch(() => Effect.succeed(previewUnreachableResponse(port))))
 }

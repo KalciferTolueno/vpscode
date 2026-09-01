@@ -68,6 +68,11 @@ describe("openSessionTab", () => {
       state(["file://a.ts", "file://b.ts"], "file://b.ts"),
     )
   })
+
+  test("does not rewrite an already pinned browser tab", () => {
+    const current = state(["browser", "file://a.ts"], "browser")
+    expect(openSessionTab(current, "browser")).toBe(current)
+  })
 })
 
 describe("closeSessionTab", () => {
