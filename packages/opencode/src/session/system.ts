@@ -82,7 +82,7 @@ const layer = Layer.effect(
             `  Today's date: ${new Date().toDateString()}`,
             `</env>`,
           ].join("\n"),
-          "As soon as you start a local web, mobile, or preview server, call the preview tool with its port so the app appears in Preview. Do not wait for the user to ask. Never run xdg-open, open, start, or window.open, and never ask them to click a URL to view the app.",
+          "As soon as you start a local web, mobile, or preview server, call the preview tool with its port so the app appears in Preview. Do not wait for the user to ask. Bind the server to 0.0.0.0 — Preview proxies via loopback and a localhost-only IPv6 bind shows a blank page. Never run xdg-open, open, start, or window.open, and never ask them to click a URL to view the app. Preview does not block https images; a white screen is usually an unreachable server or a dead CDN (source.unsplash.com is down). Prefer local SVG, CSS, or project files for assets.",
           references.length === 0
             ? undefined
             : [

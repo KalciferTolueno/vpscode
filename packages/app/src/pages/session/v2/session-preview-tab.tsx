@@ -305,20 +305,31 @@ export function SessionPreviewTab(props: {
   })
 
   const currentPreset = () => PRESETS.find((item) => item.key === preset()) ?? PRESETS[0]
+  const flush = () => fill() || chrome() === "stage"
 
   const frameLayout = createMemo(() => {
     const next = currentPreset()
-    const pad = 16
+    const pad = flush() ? 0 : 16
     const availW = Math.max(viewport().w - pad, 1)
     const availH = Math.max(viewport().h - pad, 1)
-    const fit = Math.min(availW / next.width, availH / next.height)
-    const scale = Math.max(0.05, fit * zoom())
+    const zoomScale = chrome() === "full" ? zoom() : 1
+    if (next.key === "desktop" || fill()) {
+      const scale = Math.max(0.05, zoomScale)
+      return {
+        vw: availW / scale,
+        vh: availH / scale,
+        scale,
+        shellW: availW,
+        shellH: availH,
+      }
+    }
+    const scale = Math.max(0.05, (availW / next.width) * zoomScale)
     return {
       vw: next.width,
-      vh: next.height,
+      vh: Math.max(1, availH / scale),
       scale,
-      shellW: next.width * scale,
-      shellH: next.height * scale,
+      shellW: availW,
+      shellH: availH,
     }
   })
 
@@ -471,13 +482,27 @@ export function SessionPreviewTab(props: {
             </div>
           }
         >
-          <div class="absolute inset-0 overflow-auto p-2 flex items-[safe_center] justify-[safe_center]">
+          <div
+            class="absolute inset-0 flex"
+            classList={{
+              "overflow-auto p-2 items-[safe_center] justify-[safe_center]": !flush(),
+              "overflow-hidden": flush(),
+            }}
+          >
             <div
-              class="relative shrink-0 overflow-hidden bg-white border border-v2-border-border-base"
-              style={{
-                width: `${frameLayout().shellW}px`,
-                height: `${frameLayout().shellH}px`,
+              class="relative overflow-hidden bg-white"
+              classList={{
+                "shrink-0 border border-v2-border-border-base": !flush(),
+                "size-full": flush(),
               }}
+              style={
+                flush()
+                  ? undefined
+                  : {
+                      width: `${frameLayout().shellW}px`,
+                      height: `${frameLayout().shellH}px`,
+                    }
+              }
             >
               <Show
                 when={iframeSrc()}

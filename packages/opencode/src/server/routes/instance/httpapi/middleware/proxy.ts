@@ -94,13 +94,39 @@ export function stripFramingHeaders(headers: Headers) {
   else headers.delete("content-security-policy")
 }
 
-export function http(
+export const PREVIEW_LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "[::1]"] as const
+
+export function previewUpstreamURL(port: number, pathWithSearch: string, host: string) {
+  const path = pathWithSearch.startsWith("/") ? pathWithSearch : `/${pathWithSearch}`
+  return new URL(path, `http://${host}:${port}`)
+}
+
+export function previewUnreachablePage(port: number) {
+  return `<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Preview unreachable</title></head>
+<body style="margin:0;background:#121212;color:#eee;font:15px/1.5 ui-sans-serif,system-ui,sans-serif;padding:24px">
+  <h1 style="font-size:18px">Preview cannot reach port ${port}</h1>
+  <p>Nothing responded on localhost, 127.0.0.1, or ::1. Start the app with <code>--host 0.0.0.0 --port ${port}</code>.</p>
+  <p>Vite: <code>vite --host 0.0.0.0 --port ${port} --base /preview/${port}/</code></p>
+</body>
+</html>`
+}
+
+function previewUnreachableResponse(port: number) {
+  return HttpServerResponse.text(previewUnreachablePage(port), {
+    status: 502,
+    contentType: "text/html",
+  })
+}
+
+function httpAttempt(
   client: HttpClient.HttpClient,
   url: string | URL,
   extra: HeadersInit | undefined,
   request: HttpServerRequest.HttpServerRequest,
   script?: string,
-): Effect.Effect<HttpServerResponse.HttpServerResponse> {
+) {
   return Effect.gen(function* () {
     const response = yield* client.execute(
       HttpClientRequest.make(request.method as never)(url, {
@@ -153,7 +179,34 @@ export function http(
       statusText: statusText(response),
       headers,
     })
-  }).pipe(Effect.catch(() => Effect.succeed(HttpServerResponse.empty({ status: 500 }))))
+  })
+}
+
+export function preview(
+  client: HttpClient.HttpClient,
+  port: number,
+  pathWithSearch: string,
+  request: HttpServerRequest.HttpServerRequest,
+  script?: string,
+): Effect.Effect<HttpServerResponse.HttpServerResponse> {
+  return Effect.firstSuccessOf(
+    PREVIEW_LOOPBACK_HOSTS.map((host) => {
+      const target = previewUpstreamURL(port, pathWithSearch, host)
+      return httpAttempt(client, target, { host: target.host }, request, script)
+    }),
+  ).pipe(Effect.catch(() => Effect.succeed(previewUnreachableResponse(port))))
+}
+
+export function http(
+  client: HttpClient.HttpClient,
+  url: string | URL,
+  extra: HeadersInit | undefined,
+  request: HttpServerRequest.HttpServerRequest,
+  script?: string,
+): Effect.Effect<HttpServerResponse.HttpServerResponse> {
+  return httpAttempt(client, url, extra, request, script).pipe(
+    Effect.catch(() => Effect.succeed(HttpServerResponse.empty({ status: 500 }))),
+  )
 }
 
 export * as HttpApiProxy from "./proxy"

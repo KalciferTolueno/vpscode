@@ -1,4 +1,5 @@
-import { For, Show, createMemo, createSignal, onCleanup } from "solid-js"
+import { For, Show, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js"
+import { createMediaQuery } from "@solid-primitives/media"
 import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
 import { Icon } from "@opencode-ai/ui/icon"
 import { IconButton } from "@opencode-ai/ui/icon-button"
@@ -38,7 +39,9 @@ export function SessionStudio(props: {
   const platform = usePlatform()
   const { tabs, view } = useSessionLayout()
   const [studioView, setStudioView] = createSignal<"preview" | "code">("preview")
+  const compact = createMediaQuery("(max-width: 767px)")
   const [preset, setPreset] = createSignal<PreviewPreset>("desktop")
+  createEffect(on(compact, (narrow) => setPreset(narrow ? "mobile" : "desktop")))
   const [fullscreen, setFullscreen] = createSignal(false)
   const [picking, setPicking] = createSignal(false)
   const [downloading, setDownloading] = createSignal(false)
@@ -286,7 +289,7 @@ export function SessionStudio(props: {
             sessionKey={props.sessionKey}
             chrome="stage"
             preset={preset()}
-            fill={fullscreen()}
+            fill={fullscreen() || preset() === "desktop"}
           />
         </div>
         <Show when={studioView() === "code"}>

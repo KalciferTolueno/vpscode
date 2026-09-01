@@ -203,9 +203,11 @@ const previewRoute = HttpRouter.use((router) =>
       const port = Number(match?.[1])
       if (!match || !Number.isInteger(port) || port < 1 || port > 65535)
         return Effect.succeed(HttpServerResponse.empty({ status: 404 }))
-      const target = new URL(`${match[2] ?? "/"}${source.search}`, `http://127.0.0.1:${port}`)
-      if (request.headers.upgrade?.toLowerCase() === "websocket") return HttpApiProxy.websocket(request, target)
-      return HttpApiProxy.http(client, target, { host: target.host }, request, previewPageScript)
+      const path = `${match[2] ?? "/"}${source.search}`
+      if (request.headers.upgrade?.toLowerCase() === "websocket") {
+        return HttpApiProxy.websocket(request, HttpApiProxy.previewUpstreamURL(port, path, "localhost"))
+      }
+      return HttpApiProxy.preview(client, port, path, request, previewPageScript)
     })
   }),
 ).pipe(Layer.provide(authOnlyRouterLayer), Layer.provide(Socket.layerWebSocketConstructorGlobal))
