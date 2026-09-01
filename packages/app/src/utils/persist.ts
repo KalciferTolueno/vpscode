@@ -2,7 +2,7 @@ import { Platform, usePlatform } from "@/context/platform"
 import { makePersisted, type AsyncStorage, type SyncStorage } from "@solid-primitives/storage"
 import { checksum } from "@opencode-ai/core/util/encode"
 import { createResource, type Accessor } from "solid-js"
-import type { SetStoreFunction, Store } from "solid-js/store"
+import { unwrap, type SetStoreFunction, type Store } from "solid-js/store"
 import { pathKey } from "@/utils/path-key"
 import { ScopedKey, ServerScope, type ServerScope as ServerScopeValue } from "@/utils/server-scope"
 
@@ -165,7 +165,7 @@ function write(storage: Storage, key: string, value: string) {
 }
 
 function snapshot(value: unknown) {
-  return JSON.parse(JSON.stringify(value)) as unknown
+  return JSON.parse(JSON.stringify(unwrap(value as object))) as unknown
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -681,7 +681,17 @@ export function persisted<T>(
     return api
   })()
 
-  const [state, setState, init] = makePersisted(store, { name: config.key, storage })
+  const [state, setState, init] = makePersisted(store, {
+    name: config.key,
+    storage,
+    serialize(value) {
+      try {
+        return JSON.stringify(unwrap(value as object))
+      } catch {
+        return JSON.stringify(defaults)
+      }
+    },
+  })
 
   const isAsync = init instanceof Promise
   const [ready] = createResource(

@@ -1044,20 +1044,28 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           },
           async open(tab: string) {
             const session = key()
+            const current = store.sessionTabs[session]
             apply(
               session,
               openSessionTab(
-                { tabs: store.sessionTabs[session] ?? { all: [] }, preview: ephemeral.sessionTabPreview[session] },
+                {
+                  tabs: current ? { all: current.all.slice(), active: current.active } : { all: [] },
+                  preview: ephemeral.sessionTabPreview[session],
+                },
                 normalize(tab),
               ),
             )
           },
           previewTab(tab: string) {
             const session = key()
+            const current = store.sessionTabs[session]
             apply(
               session,
               previewSessionTab(
-                { tabs: store.sessionTabs[session] ?? { all: [] }, preview: ephemeral.sessionTabPreview[session] },
+                {
+                  tabs: current ? { all: current.all.slice(), active: current.active } : { all: [] },
+                  preview: ephemeral.sessionTabPreview[session],
+                },
                 normalize(tab),
               ),
             )

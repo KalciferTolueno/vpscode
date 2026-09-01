@@ -71,7 +71,7 @@ export function NewHome() {
 
 function IdleLogo() {
   return (
-    <div class="relative min-h-0 flex-1 self-stretch overflow-hidden rounded-[3px] bg-v2-background-bg-deep">
+    <div class="relative min-h-0 flex-1 self-stretch overflow-hidden rounded-[3px]">
       <div class="absolute inset-x-0 top-[25.375%] flex justify-center px-6">
         <div class="relative w-full max-w-[720px] h-[140px] sm:h-[220px]" role="img" aria-label="vpscode">
           <ASCIIText text="vpscode" enableWaves={false} asciiFontSize={6} textFontSize={240} />

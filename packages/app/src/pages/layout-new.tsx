@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, Show, Suspense, type ParentProps } from "solid-js"
+import { createEffect, createMemo, createSignal, lazy, Show, Suspense, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createMediaQuery } from "@solid-primitives/media"
 import { DebugBar } from "@/components/debug-bar"
@@ -8,6 +8,11 @@ import { isIdleRoute, useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
 import { IdleNav } from "@/pages/home/idle-nav"
 import { setV2Toast, ToastRegion } from "@/utils/toast"
+
+const Dither = lazy(async () => {
+  const { Dither } = await import("@/components/dither")
+  return { default: Dither }
+})
 
 export default function NewLayout(props: ParentProps) {
   const platform = usePlatform()
@@ -40,38 +45,48 @@ export default function NewLayout(props: ParentProps) {
         "padding-bottom": "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      <Titlebar
-        update={update}
-        debugTools={
-          import.meta.env.DEV
-            ? { visible: state.debugTools, toggle: () => setState("debugTools", (value) => !value) }
-            : undefined
-        }
-        mobileNav={{
-          open: mobileNav,
-          toggle: () => setMobileNav((value) => !value),
-        }}
-      />
-      <main
-        data-component="layout-main"
-        class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict"
+      <div
+        class="pointer-events-none absolute inset-0 z-0 opacity-20"
+        aria-hidden="true"
       >
-        <div class="flex min-h-0 min-w-0 w-full flex-1">
-          <Show when={idle() || mobileNav()}>
-            <IdleNav desktop={idle()} mobileOpen={mobileNav()} onMobileClose={() => setMobileNav(false)} />
-          </Show>
-          <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <Suspense
-              fallback={
-                <div class="min-h-0 min-w-0 flex-1 self-stretch rounded-[3px] bg-v2-background-bg-deep" data-oc-enter />
-              }
-            >
-              {props.children}
-            </Suspense>
+        <Suspense>
+          <Dither />
+        </Suspense>
+      </div>
+      <div class="relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col">
+        <Titlebar
+          update={update}
+          debugTools={
+            import.meta.env.DEV
+              ? { visible: state.debugTools, toggle: () => setState("debugTools", (value) => !value) }
+              : undefined
+          }
+          mobileNav={{
+            open: mobileNav,
+            toggle: () => setMobileNav((value) => !value),
+          }}
+        />
+        <main
+          data-component="layout-main"
+          class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict"
+        >
+          <div class="flex min-h-0 min-w-0 w-full flex-1">
+            <Show when={idle() || mobileNav()}>
+              <IdleNav desktop={idle()} mobileOpen={mobileNav()} onMobileClose={() => setMobileNav(false)} />
+            </Show>
+            <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              <Suspense
+                fallback={
+                  <div class="min-h-0 min-w-0 flex-1 self-stretch rounded-[3px]" data-oc-enter />
+                }
+              >
+                {props.children}
+              </Suspense>
+            </div>
           </div>
-        </div>
-      </main>
-      {import.meta.env.DEV && state.debugTools && <DebugBar inline />}
+        </main>
+        {import.meta.env.DEV && state.debugTools && <DebugBar inline />}
+      </div>
       <TabsInfoPopup />
       <ToastRegion v2 />
     </div>

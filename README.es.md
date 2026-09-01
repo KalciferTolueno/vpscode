@@ -43,11 +43,11 @@
 
 ---
 
-### VPS Code v1.3
+### VPS Code v1.4
 
 Esta bifurcación incorpora la marca VPS Code, un espacio web centrado en el agente, navegador integrado y despliegue persistente en EasyPanel.
 
-El despliegue soportado utiliza la opción **Compose/Composer de EasyPanel** con el archivo `docker-compose.yml` del repositorio. Consulta la [guía de despliegue de VPS Code v1.3](./DEPLOYMENT.md) para configurar puertos, variables, volúmenes, actualizaciones y diagnóstico de errores.
+El despliegue soportado utiliza la opción **Compose/Composer de EasyPanel** con el archivo `docker-compose.yml` del repositorio. Consulta la [guía de despliegue de VPS Code v1.4](./DEPLOYMENT.md) para configurar puertos, variables, volúmenes, actualizaciones y diagnóstico de errores.
 
 ### Instalación
 

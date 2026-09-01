@@ -17,7 +17,7 @@ export const PreviewTool = Tool.define(
 
     return {
       description:
-        "Show a local development server in Preview. Call this as soon as the server is listening — do not wait for the user to ask. That is the only browser the user has: no OS browser, no popups, no new tabs. Start the server on 0.0.0.0 (not localhost-only) first, then call this tool with its port. For Vite, use base /preview/<port>/. Do not use source.unsplash.com (it is down). Prefer local SVG, CSS, or files in the project for images; Preview can load https CDNs from the user's browser and does not block Unsplash.",
+        "Show a local development server in Preview. Call this as soon as the server is listening — do not wait for the user to ask. That is the only browser the user has: no OS browser, no popups, no new tabs. Start the server on 0.0.0.0 (not localhost-only) first, then call this tool with its port. Do not use source.unsplash.com (it is down). Prefer local SVG, CSS, or files in the project for images; Preview can load https CDNs from the user's browser and does not block Unsplash.",
       parameters: Parameters,
       execute: ({ port }: { port: number }) =>
         Effect.gen(function* () {

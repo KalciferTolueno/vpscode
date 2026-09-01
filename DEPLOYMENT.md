@@ -1,6 +1,6 @@
-# VPS Code v1.3: despliegue con Compose
+# VPS Code v1.4: despliegue con Compose
 
-Esta es la guía de despliegue para la rama `v1.3`, la versión más actualizada de VPS Code.
+Esta es la guía de despliegue para la rama `v1.4`, la versión más actualizada de VPS Code.
 
 VPS Code se despliega mediante la opción **Compose/Composer de EasyPanel**. No se debe configurar como una aplicación estática ni ejecutar únicamente el frontend: el contenedor compila y ejecuta el servidor completo de VPS Code.
 
@@ -13,12 +13,14 @@ VPS Code se despliega mediante la opción **Compose/Composer de EasyPanel**. No 
 - Proceso: `opencode serve --hostname 0.0.0.0 --port 4096`.
 - Directorio de trabajo: `/workspace`.
 
-## Funciones de v1.3
+## Funciones de v1.4
 
-- Interfaz web con marca VPS Code.
+- Interfaz web con marca VPS Code y fondo dither en el layout.
 - Chats, configuración y proyectos persistentes.
 - Navegador integrado para previsualizar aplicaciones del proyecto.
 - Proxy interno para servidores de desarrollo mediante `/preview/<puerto>/`.
+- Reescritura automática de rutas absolutas de Vite (`/src/...`, `/@vite/client`) para que el preview funcione sin `--base`.
+- Redirección del WebSocket HMR de Vite a través del mismo origen.
 - Selector visual de elementos del navegador.
 - Consola integrada con errores de JavaScript, promesas y recursos.
 - Acción para añadir los errores capturados al prompt del agente.
@@ -70,7 +72,7 @@ Recrear o actualizar el contenedor no elimina estos datos. Eliminar manualmente 
 
 1. Crea un servicio con la opción **Compose/Composer**.
 2. Conecta el repositorio `https://github.com/KalciferTolueno/vpscode`.
-3. Selecciona la rama `v1.3`.
+3. Selecciona la rama `v1.4`.
 4. Usa el archivo `docker-compose.yml` de la raíz.
 5. Define `OPENCODE_SERVER_PASSWORD` en las variables del servicio.
 6. Inicia el build y espera a que el contenedor quede en ejecución.
@@ -108,7 +110,7 @@ Comprueba, en este orden:
 4. El puerto de destino es el interno `4096`.
 5. El protocolo entre EasyPanel y el contenedor es `HTTP`, no `HTTPS`.
 6. `OPENCODE_SERVER_PASSWORD` existe y no está vacío.
-7. El build utiliza la rama `v1.3` y el `docker-compose.yml` de la raíz.
+7. El build utiliza la rama `v1.4` y el `docker-compose.yml` de la raíz.
 
 Si no aparece la línea de escucha, revisa el log desde el primer error. Si aparece y la prueba local responde, el problema está en la configuración del dominio o la red de EasyPanel.
 
@@ -119,10 +121,10 @@ El navegador de la pestaña Browser es un iframe del proxy `/preview/<puerto>/`.
 Ejemplo con Vite en el puerto `5173`:
 
 ```bash
-bun run dev -- --host 0.0.0.0 --port 5173 --base /preview/5173/
+bun run dev -- --host 0.0.0.0 --port 5173
 ```
 
-Después, el navegador integrado accede mediante `/preview/5173/`. La aplicación principal continúa usando el puerto `4096`.
+El proxy reescribe las rutas absolutas (`/src/main.tsx`, `/@vite/client`) para que el iframe las cargue como `/preview/5173/...`. No hace falta `--base`. Después, el navegador integrado accede mediante `/preview/5173/`. La aplicación principal continúa usando el puerto `4096`.
 
 ## Actualización
 
@@ -133,7 +135,7 @@ Para actualizar sin perder datos:
 3. Ejecuta un nuevo build del servicio Compose.
 4. Verifica el log de escucha y el dominio.
 
-Para volver a esta versión, selecciona la rama `v1.3` y vuelve a desplegar. Los volúmenes pueden reutilizarse.
+Para volver a v1.3, selecciona la rama `v1.3` y vuelve a desplegar. Los volúmenes pueden reutilizarse.
 
 ## Copia de seguridad
 

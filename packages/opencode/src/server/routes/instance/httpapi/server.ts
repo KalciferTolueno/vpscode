@@ -205,7 +205,7 @@ const previewRoute = HttpRouter.use((router) =>
         return Effect.succeed(HttpServerResponse.empty({ status: 404 }))
       const path = `${match[2] ?? "/"}${source.search}`
       if (request.headers.upgrade?.toLowerCase() === "websocket") {
-        return HttpApiProxy.websocket(request, HttpApiProxy.previewUpstreamURL(port, path, "localhost"))
+        return HttpApiProxy.websocket(request, HttpApiProxy.previewUpstreamURL(port, path, "127.0.0.1"))
       }
       return HttpApiProxy.preview(client, port, path, request, previewPageScript)
     })

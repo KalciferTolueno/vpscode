@@ -354,7 +354,7 @@ function SessionRouteFrame(props: ParentProps<{ padded?: boolean }>) {
   return (
     <div
       data-component="agent-studio-session"
-      class="relative size-full overflow-hidden flex flex-col bg-v2-background-bg-deep"
+      class="relative size-full overflow-hidden flex flex-col"
       classList={{ "p-3": props.padded }}
     >
       {props.children}

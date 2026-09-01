@@ -3,7 +3,7 @@ import { Effect, Stream } from "effect"
 import { HttpBody, HttpClient, HttpClientRequest, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import * as Socket from "effect/unstable/socket/Socket"
 import { WebSocketTracker } from "../websocket-tracker"
-import { injectHtmlScript } from "./inject-html-script"
+import { preparePreviewBody, previewRewritable } from "./rewrite-preview-urls"
 
 function requestBody(request: HttpServerRequest.HttpServerRequest) {
   if (request.method === "GET" || request.method === "HEAD") return HttpBody.empty
@@ -94,7 +94,7 @@ export function stripFramingHeaders(headers: Headers) {
   else headers.delete("content-security-policy")
 }
 
-export const PREVIEW_LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "[::1]"] as const
+export const PREVIEW_LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "[::1]"] as const
 
 export function previewUpstreamURL(port: number, pathWithSearch: string, host: string) {
   const path = pathWithSearch.startsWith("/") ? pathWithSearch : `/${pathWithSearch}`
@@ -108,7 +108,7 @@ export function previewUnreachablePage(port: number) {
 <body style="margin:0;background:#121212;color:#eee;font:15px/1.5 ui-sans-serif,system-ui,sans-serif;padding:24px">
   <h1 style="font-size:18px">Preview cannot reach port ${port}</h1>
   <p>Nothing responded on localhost, 127.0.0.1, or ::1. Start the app with <code>--host 0.0.0.0 --port ${port}</code>.</p>
-  <p>Vite: <code>vite --host 0.0.0.0 --port ${port} --base /preview/${port}/</code></p>
+  <p>Vite: <code>vite --host 0.0.0.0 --port ${port}</code></p>
 </body>
 </html>`
 }
@@ -125,7 +125,7 @@ function httpAttempt(
   url: string | URL,
   extra: HeadersInit | undefined,
   request: HttpServerRequest.HttpServerRequest,
-  script?: string,
+  preview?: { port?: number; script: string },
 ) {
   return Effect.gen(function* () {
     const response = yield* client.execute(
@@ -137,7 +137,7 @@ function httpAttempt(
     const headers = new Headers(response.headers as HeadersInit)
     headers.delete("content-encoding")
     headers.delete("content-length")
-    if (script) stripFramingHeaders(headers)
+    if (preview) stripFramingHeaders(headers)
 
     // An upstream 5xx from a remote workspace sandbox arrives here as an opaque
     // status — its real cause (and log line) live only inside the sandbox. Buffer
@@ -163,10 +163,10 @@ function httpAttempt(
     }
 
     const contentType = response.headers["content-type"]
-    if (script && request.method === "GET" && contentType?.includes("text/html")) {
+    if (preview && request.method === "GET" && previewRewritable(contentType, preview.port)) {
       const body = yield* response.text
       headers.delete("content-type")
-      return HttpServerResponse.text(injectHtmlScript(body, script), {
+      return HttpServerResponse.text(preparePreviewBody(body, contentType ?? "", preview.port, preview.script), {
         status: response.status,
         statusText: statusText(response),
         headers,
@@ -192,7 +192,7 @@ export function preview(
   return Effect.firstSuccessOf(
     PREVIEW_LOOPBACK_HOSTS.map((host) => {
       const target = previewUpstreamURL(port, pathWithSearch, host)
-      return httpAttempt(client, target, { host: target.host }, request, script)
+      return httpAttempt(client, target, { host: target.host }, request, script ? { port, script } : undefined)
     }),
   ).pipe(Effect.catch(() => Effect.succeed(previewUnreachableResponse(port))))
 }
@@ -204,7 +204,7 @@ export function http(
   request: HttpServerRequest.HttpServerRequest,
   script?: string,
 ): Effect.Effect<HttpServerResponse.HttpServerResponse> {
-  return httpAttempt(client, url, extra, request, script).pipe(
+  return httpAttempt(client, url, extra, request, script ? { script } : undefined).pipe(
     Effect.catch(() => Effect.succeed(HttpServerResponse.empty({ status: 500 }))),
   )
 }

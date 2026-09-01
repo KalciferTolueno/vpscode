@@ -19,6 +19,26 @@ export const previewPageScript = `(function(){
     }
     return window;
   };
+  var NativeWS=window.WebSocket;
+  function WrappedWS(url,protocols){
+    try{
+      var u=new URL(String(url),location.href);
+      var m=location.pathname.match(/^\\/preview\\/(\\d+)/);
+      if(m&&(u.port===m[1]||(protocols!=null&&String(protocols).indexOf("vite-hmr")!==-1))){
+        u.protocol=location.protocol==="https:"?"wss:":"ws:";
+        u.host=location.host;
+        if(u.pathname.indexOf("/preview/")!==0)u.pathname="/preview/"+m[1]+(u.pathname==="/"?"/":u.pathname);
+        url=u.toString();
+      }
+    }catch(e){}
+    return new NativeWS(url,protocols);
+  }
+  WrappedWS.prototype=NativeWS.prototype;
+  WrappedWS.CONNECTING=NativeWS.CONNECTING;
+  WrappedWS.OPEN=NativeWS.OPEN;
+  WrappedWS.CLOSING=NativeWS.CLOSING;
+  WrappedWS.CLOSED=NativeWS.CLOSED;
+  window.WebSocket=WrappedWS;
   window.addEventListener("error",function(e){
     var t=e.target;
     if(t&&t!==window&&t.tagName&&(t.tagName==="IMG"||t.tagName==="SCRIPT"||t.tagName==="LINK"||t.tagName==="VIDEO"||t.tagName==="AUDIO")){

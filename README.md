@@ -43,11 +43,11 @@
 
 ---
 
-### VPS Code v1.3
+### VPS Code v1.4
 
 This fork adds VPS Code branding, an agent-first web workspace, a built-in browser preview, and persistent EasyPanel deployment.
 
-The supported server deployment uses the **Compose/Composer option in EasyPanel** with the repository's `docker-compose.yml`. See the [VPS Code v1.3 deployment guide](./DEPLOYMENT.md) for ports, environment variables, persistent volumes, updates, and troubleshooting.
+The supported server deployment uses the **Compose/Composer option in EasyPanel** with the repository's `docker-compose.yml`. See the [VPS Code v1.4 deployment guide](./DEPLOYMENT.md) for ports, environment variables, persistent volumes, updates, and troubleshooting.
 
 ### Installation
 
