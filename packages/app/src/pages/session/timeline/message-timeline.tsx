@@ -409,6 +409,28 @@ export function MessageTimeline(props: {
   }
 
   const [toolOpen, setToolOpen] = createStore<Record<string, boolean | undefined>>(cached?.toolOpen ?? {})
+  let enterSession = ""
+  let enterPrimed = false
+  let enterPrimeFrame = 0
+  const enterSeen = new Set<string>()
+  const takeEnter = (rowKey: string) => {
+    const session = sessionKey()
+    if (session !== enterSession) {
+      enterSession = session
+      enterPrimed = false
+      enterSeen.clear()
+      if (enterPrimeFrame) cancelAnimationFrame(enterPrimeFrame)
+      enterPrimeFrame = requestAnimationFrame(() => {
+        enterPrimeFrame = requestAnimationFrame(() => {
+          enterPrimeFrame = 0
+          if (enterSession === session) enterPrimed = true
+        })
+      })
+    }
+    if (enterSeen.has(rowKey)) return false
+    enterSeen.add(rowKey)
+    return enterPrimed
+  }
   const [renderOverscan, setRenderOverscan] = createSignal(initialMeasurements?.length || coldBottomMount ? 6 : 20)
   let resizePinnedIndexes: number[] = []
   let resizePinFrame: number | undefined
@@ -546,6 +568,7 @@ export function MessageTimeline(props: {
     while (timelineCache.size > 16) timelineCache.delete(timelineCache.keys().next().value!)
     if (resizePinFrame !== undefined) cancelAnimationFrame(resizePinFrame)
     if (overscanFrame !== undefined) cancelAnimationFrame(overscanFrame)
+    if (enterPrimeFrame) cancelAnimationFrame(enterPrimeFrame)
     props.setRevealMessage?.(() => {})
     props.setScrollToEnd?.(() => {})
     props.setHistoryAnchor?.({ capture: () => {}, restore: () => {} })
@@ -1233,6 +1256,7 @@ export function MessageTimeline(props: {
     let element: HTMLDivElement
     const initialItem = virtualItemByKey().get(props.rowKey)!
     const initialRow = timelineRowByKey().get(props.rowKey)!
+    const animateEnter = !!initialRow && initialRow._tag !== "TurnGap" && takeEnter(props.rowKey)
     const item = createMemo(() => virtualItemByKey().get(props.rowKey) ?? initialItem)
     const row = createMemo(() => timelineRowByKey().get(props.rowKey) ?? initialRow)
     const tool = () => {
@@ -1280,6 +1304,7 @@ export function MessageTimeline(props: {
             element = value
           }}
           data-index={item().index}
+          data-oc-enter={animateEnter ? "row" : undefined}
           style={{ "min-height": ready() ? undefined : `${initialItem.size}px` }}
         >
           <TimelineRowView

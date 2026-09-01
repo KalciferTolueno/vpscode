@@ -78,9 +78,11 @@ const layer = Layer.effect(
             `  Workspace root folder: ${ctx.worktree}`,
             `  Is directory a git repo: ${ctx.project.vcs === "git" ? "yes" : "no"}`,
             `  Platform: ${process.platform}`,
+            `  UI: VPS Code web (remote/mobile). There is no OS browser and popup windows cannot open.`,
             `  Today's date: ${new Date().toDateString()}`,
             `</env>`,
           ].join("\n"),
+          "As soon as you start a local web, mobile, or preview server, call the preview tool with its port so the app appears in Preview. Do not wait for the user to ask. Never run xdg-open, open, start, or window.open, and never ask them to click a URL to view the app.",
           references.length === 0
             ? undefined
             : [

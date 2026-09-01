@@ -1,11 +1,18 @@
 import type { HomeProjectsController } from "./home-projects-controller"
 import { HomeProjectsView } from "./home-projects-view"
 import type { HomeScrollController } from "./home-scroll-controller"
+import { ServerConnection } from "@/context/server"
 
-export function HomeProjects(props: { projects: HomeProjectsController; scroll: HomeScrollController }) {
+export function HomeProjects(props: {
+  projects: HomeProjectsController
+  scroll: HomeScrollController
+  density?: "page" | "nav"
+  onSelectProject?: (server: ServerConnection.Any, directory: string) => void
+}) {
   return (
     <HomeProjectsView
       language={props.projects.copy.language}
+      density={props.density}
       servers={props.projects.server.list}
       projects={props.projects.project.list}
       recentlyClosed={props.projects.project.recentlyClosed}
@@ -26,7 +33,7 @@ export function HomeProjects(props: { projects: HomeProjectsController; scroll: 
       onSetDefaultServer={props.projects.server.setDefault}
       onRemoveServer={props.projects.server.remove}
       onMoveProject={props.projects.project.move}
-      onSelectProject={props.projects.project.select}
+      onSelectProject={props.onSelectProject ?? props.projects.project.select}
       onAddProjects={props.projects.project.add}
       onOpenProjectNewSession={props.projects.project.openNewSession}
       onEditProject={props.projects.project.edit}

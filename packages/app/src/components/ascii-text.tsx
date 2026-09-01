@@ -46,8 +46,10 @@ function createEngine(el: HTMLDivElement, props: Required<ASCIITextProps>) {
     const instance = new CanvAscii(optionsOf(props), el, size.width, size.height)
     instance.init()
     instance.load()
+    delete el.dataset.asciiFailed
     return instance
   } catch {
+    el.dataset.asciiFailed = ""
     return
   }
 }

@@ -106,6 +106,7 @@ import { sessionLocationLayer } from "@opencode-ai/server/middleware/session-loc
 import { PtyEnvironment } from "@opencode-ai/server/pty-environment"
 import { schemaErrorLayer as v2SchemaErrorLayer } from "@opencode-ai/server/middleware/schema-error"
 import { HttpApiProxy } from "./middleware/proxy"
+import { fileArchiveRoute } from "./middleware/file-archive-route"
 import { previewPageScript } from "./middleware/preview-page-script"
 import { workspaceHandlers } from "./handlers/workspace"
 import { instanceContextLayer } from "./middleware/instance-context"
@@ -299,6 +300,7 @@ export function createRoutes(
     serverRoutes,
     docRoute,
     previewRoute,
+    fileArchiveRoute.pipe(Layer.provide(authOnlyRouterLayer)),
     uiRoute,
   ).pipe(
     Layer.provide([

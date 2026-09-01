@@ -29,6 +29,7 @@ const projectContextMenuID = (server: ServerConnection.Any, directory: string) =
 
 export type HomeProjectsViewProps = {
   language: ReturnType<typeof useLanguage>
+  density?: "page" | "nav"
   servers: Accessor<ServerConnection.Any[]>
   projects: Accessor<LocalProject[]>
   recentlyClosed: Accessor<LocalProject[]>
@@ -61,17 +62,62 @@ export type HomeProjectsViewProps = {
 }
 
 export function HomeProjectsView(props: HomeProjectsViewProps) {
+  const density = () => props.density ?? "page"
   const [contextMenu, setContextMenu] = createStore({ open: undefined as string | undefined })
   const contextMenuProps = {
     contextMenuOpen: (id: string) => contextMenu.open === id,
     onSetContextMenuOpen: (id: string, open: boolean) => setContextMenu("open", open ? id : undefined),
   }
+  const projectList = () => (
+    <Show
+      when={props.servers().length > 1}
+      fallback={
+        <div class="pr-3">
+          <Show
+            when={props.projects().length > 0}
+            fallback={<HomeProjectEmpty {...props} server={props.servers()[0]} items={props.recentlyClosed()} />}
+          >
+            <HomeProjectList {...props} {...contextMenuProps} server={props.servers()[0]} items={props.projects()} />
+          </Show>
+        </div>
+      }
+    >
+      <div class="flex min-w-0 flex-col gap-4 pr-3">
+        <For each={props.servers()}>
+          {(item) => {
+            const projects = () => props.projectsForServer(item)
+            const healthy = () => !!props.serverHealth(item)?.healthy
+            const hasProjects = () => projects().length > 0
+            const collapsed = () => props.collapsed(item)
+            return (
+              <div class="flex min-w-0 flex-col gap-1">
+                <HomeServerRow
+                  server={item}
+                  {...props}
+                  {...contextMenuProps}
+                  selected={props.selection().server === ServerConnection.key(item) && !props.selection().directory}
+                  collapsed={collapsed()}
+                  health={props.serverHealth(item)}
+                />
+                <Show when={healthy() && hasProjects() && !collapsed()}>
+                  <div class="mx-3 h-px bg-v2-border-border-base" />
+                  <HomeProjectList {...props} {...contextMenuProps} server={item} items={projects()} />
+                </Show>
+              </div>
+            )
+          }}
+        </For>
+      </div>
+    </Show>
+  )
   return (
     <aside
-      class={`
-        mt-6 flex min-h-0 min-w-0 flex-col gap-4 overflow-hidden
-        lg:sticky lg:top-14 lg:mt-14 lg:h-[calc(100cqh-56px)] lg:self-start lg:pt-[52px]
-      `}
+      class="flex min-h-0 min-w-0 flex-col overflow-hidden"
+      classList={{
+        "mt-6 gap-4 lg:sticky lg:top-14 lg:mt-14 lg:h-[calc(100cqh-56px)] lg:self-start lg:pt-[52px]":
+          density() === "page",
+        "gap-2": density() === "nav",
+      }}
       aria-label={props.language.t("home.projects")}
       onWheel={(event) => {
         if (event.target === event.currentTarget) return
@@ -97,59 +143,19 @@ export function HomeProjectsView(props: HomeProjectsViewProps) {
           </TooltipV2>
         </Show>
       </div>
-      <ScrollView data-slot="home-projects-scroll" class="min-h-0 min-w-0 shrink">
-        <Show
-          when={props.servers().length > 1}
-          fallback={
-            <div class="pr-3">
-              <Show
-                when={props.projects().length > 0}
-                fallback={<HomeProjectEmpty {...props} server={props.servers()[0]} items={props.recentlyClosed()} />}
-              >
-                <HomeProjectList
-                  {...props}
-                  {...contextMenuProps}
-                  server={props.servers()[0]}
-                  items={props.projects()}
-                />
-              </Show>
-            </div>
-          }
-        >
-          <div class="flex min-w-0 flex-col gap-4 pr-3">
-            <For each={props.servers()}>
-              {(item) => {
-                const projects = () => props.projectsForServer(item)
-                const healthy = () => !!props.serverHealth(item)?.healthy
-                const hasProjects = () => projects().length > 0
-                const collapsed = () => props.collapsed(item)
-                return (
-                  <div class="flex min-w-0 flex-col gap-1">
-                    <HomeServerRow
-                      server={item}
-                      {...props}
-                      {...contextMenuProps}
-                      selected={props.selection().server === ServerConnection.key(item) && !props.selection().directory}
-                      collapsed={collapsed()}
-                      health={props.serverHealth(item)}
-                    />
-                    <Show when={healthy() && hasProjects() && !collapsed()}>
-                      <div class="mx-3 h-px bg-v2-border-border-base" />
-                      <HomeProjectList {...props} {...contextMenuProps} server={item} items={projects()} />
-                    </Show>
-                  </div>
-                )
-              }}
-            </For>
-          </div>
-        </Show>
-      </ScrollView>
-      <HomeUtilityNav
-        class="mb-8 mt-4 hidden shrink-0 lg:flex"
-        onOpenSettings={props.onOpenSettings}
-        onOpenHelp={props.onOpenHelp}
-        language={props.language}
-      />
+      <Show when={density() === "page"} fallback={<div class="min-h-0 min-w-0">{projectList()}</div>}>
+        <ScrollView data-slot="home-projects-scroll" class="min-h-0 min-w-0 shrink">
+          {projectList()}
+        </ScrollView>
+      </Show>
+      <Show when={density() === "page"}>
+        <HomeUtilityNav
+          class="mb-8 mt-4 hidden shrink-0 lg:flex"
+          onOpenSettings={props.onOpenSettings}
+          onOpenHelp={props.onOpenHelp}
+          language={props.language}
+        />
+      </Show>
     </aside>
   )
 }

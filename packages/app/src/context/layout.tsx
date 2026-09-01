@@ -95,6 +95,10 @@ export type LayoutRoute =
   | { type: "dir-new-sesssion"; dir: string; dirBase64: string; server?: ServerConnection.Key }
   | { type: "session"; sessionId: string; server?: ServerConnection.Key }
 
+export function isIdleRoute(route: LayoutRoute) {
+  return route.type === "home" || route.type === "draft"
+}
+
 const sessionPath = (key: string) => {
   const dir = SessionStateKey.route(key).split("/")[0]
   if (!dir) return

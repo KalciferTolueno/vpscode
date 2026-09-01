@@ -1,50 +1,82 @@
-import { ScrollView } from "@opencode-ai/ui/scroll-view"
+import { Show, createEffect, createMemo } from "solid-js"
+import { useNavigate } from "@solidjs/router"
+import { ASCIIText } from "@/components/ascii-text"
+import { CommentsProvider } from "@/context/comments"
+import { FileProvider } from "@/context/file"
+import { ModelsProvider } from "@/context/models"
+import { PromptProvider } from "@/context/prompt"
+import { SDKProvider } from "@/context/sdk"
+import { ServerConnection } from "@/context/server"
+import { type DraftTab, draftHref, useTabs } from "@/context/tabs"
+import { DirectoryDataProvider } from "@/pages/directory-layout"
+import NewSession from "@/pages/new-session"
 import { createHomeController } from "./home/home-controller"
-import { createHomeProjectsController } from "./home/home-projects-controller"
-import { HomeUtilityNav } from "./home/home-projects-view"
-import { HomeProjects } from "./home/home-projects"
-import { createHomeScrollController } from "./home/home-scroll-controller"
-import { createHomeSessionSearchController } from "./home/home-session-search-controller"
-import { createHomeSessionsController } from "./home/home-sessions-controller"
-import { HomeSessions } from "./home/home-sessions"
 
 export function NewHome() {
+  const tabs = useTabs()
+  const navigate = useNavigate()
   const home = createHomeController()
-  const projects = createHomeProjectsController(home)
-  const sessions = createHomeSessionsController(home)
-  const search = createHomeSessionSearchController(home, sessions)
-  const scroll = createHomeScrollController(sessions.data.groups)
+  const directory = createMemo(() => home.project.newSession()?.worktree)
+  const serverKey = createMemo(() => {
+    const conn = home.server.focused()
+    if (!conn) return
+    return ServerConnection.key(conn)
+  })
+  const draft = createMemo(() => {
+    if (!tabs.ready()) return
+    const directory = home.project.newSession()?.worktree
+    const server = serverKey()
+    if (!directory || !server) return
+    return (
+      tabs.store.find(
+        (tab): tab is DraftTab => tab.type === "draft" && tab.server === server && tab.directory === directory,
+      ) ?? tabs.store.find((tab): tab is DraftTab => tab.type === "draft")
+    )
+  })
+
+  let opening = false
+  createEffect(() => {
+    if (!tabs.ready()) return
+    const tab = draft()
+    if (tab) {
+      navigate(draftHref(tab.draftID), { replace: true })
+      return
+    }
+    if (opening) return
+    const directory = home.project.newSession()?.worktree
+    const conn = home.server.focused()
+    if (!directory || !conn) return
+    opening = true
+    void tabs.newDraft({ server: ServerConnection.key(conn), directory })
+  })
+
   return (
-    <div
-      class={`
-        m-3 min-h-0 flex-1 self-stretch overflow-hidden rounded-[3px] border border-v2-border-border-muted
-        bg-v2-background-bg-base
-      `}
-    >
-      <ScrollView
-        class="h-full [container-type:size]"
-        thumbContainer={scroll.viewport.thumbTrack}
-        thumbHoverTarget={scroll.viewport.hoverTarget}
-        viewportRef={scroll.viewport.setViewport}
-        onScroll={(event) => scroll.viewport.update(event.currentTarget.scrollTop)}
-        onWheel={scroll.viewport.containOuterWheel}
-      >
-        <div
-          class={`
-            mx-auto grid min-h-full w-full max-w-[1080px] grid-rows-[auto_minmax(0,1fr)_auto] gap-4 px-3
-            lg:grid-cols-[280px_minmax(0,720px)] lg:grid-rows-1 lg:gap-8 lg:px-6
-          `}
-        >
-          <HomeProjects projects={projects} scroll={scroll} />
-          <HomeSessions sessions={sessions} search={search} scroll={scroll} />
-          <HomeUtilityNav
-            class="flex lg:hidden"
-            onOpenSettings={projects.utility.settings}
-            onOpenHelp={projects.utility.help}
-            language={projects.copy.language}
-          />
+    <Show when={directory()} fallback={<IdleLogo />}>
+      <ModelsProvider directory={directory}>
+        <SDKProvider directory={() => directory() ?? ""}>
+          <DirectoryDataProvider directory={() => directory() ?? ""} server={serverKey}>
+            <FileProvider>
+              <PromptProvider>
+                <CommentsProvider>
+                  <NewSession />
+                </CommentsProvider>
+              </PromptProvider>
+            </FileProvider>
+          </DirectoryDataProvider>
+        </SDKProvider>
+      </ModelsProvider>
+    </Show>
+  )
+}
+
+function IdleLogo() {
+  return (
+    <div class="relative min-h-0 flex-1 self-stretch overflow-hidden rounded-[3px] bg-v2-background-bg-deep">
+      <div class="absolute inset-x-0 top-[25.375%] flex justify-center px-6">
+        <div class="relative w-full max-w-[720px] h-[140px] sm:h-[220px]" role="img" aria-label="vpscode">
+          <ASCIIText text="vpscode" enableWaves={false} asciiFontSize={6} textFontSize={240} />
         </div>
-      </ScrollView>
+      </div>
     </div>
   )
 }

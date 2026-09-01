@@ -3,6 +3,7 @@
 - Fetches the URL content, converts to requested format (markdown by default)
 - Returns the content in the specified format
 - Use this tool when you need to retrieve and analyze web content
+- This tool does not open a browser. To show a local app to the user, call the preview tool as soon as the server is running.
 
 Usage notes:
   - IMPORTANT: if another tool is present that offers better web fetching capabilities, is more targeted to the task, or has fewer restrictions, prefer using that tool instead of this one.

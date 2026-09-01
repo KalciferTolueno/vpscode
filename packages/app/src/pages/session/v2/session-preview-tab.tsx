@@ -7,7 +7,12 @@ const STORAGE_PREFIX = "opencode.preview.url"
 const DEFAULT_URL = ""
 const COMMON_PORTS = [3000, 5000, 5173, 8000, 8080, 4173, 4200]
 
-const registries = new Map<string, { set(value: string): void }>()
+const registries = new Map<string, { set(value: string): void; reload(): void; togglePick(): boolean }>()
+const pickWatchers = new Map<string, Set<(value: boolean) => void>>()
+
+function notifyPick(key: string, value: boolean) {
+  pickWatchers.get(key)?.forEach((fn) => fn(value))
+}
 
 export function setPreviewUrlFor(sessionKey: string, tabId: string, value: string) {
   const next = previewIframeSrc(value)
@@ -17,6 +22,34 @@ export function setPreviewUrlFor(sessionKey: string, tabId: string, value: strin
   } catch {}
   registries.get(`${sessionKey}.${tabId}`)?.set(next)
 }
+
+export function reloadPreviewFor(sessionKey: string, tabId: string) {
+  registries.get(`${sessionKey}.${tabId}`)?.reload()
+}
+
+export function togglePickFor(sessionKey: string, tabId: string) {
+  return registries.get(`${sessionKey}.${tabId}`)?.togglePick() ?? false
+}
+
+export function watchPickFor(sessionKey: string, tabId: string, onChange: (value: boolean) => void) {
+  const key = `${sessionKey}.${tabId}`
+  const listeners = pickWatchers.get(key) ?? new Set<(value: boolean) => void>()
+  listeners.add(onChange)
+  pickWatchers.set(key, listeners)
+  return () => {
+    listeners.delete(onChange)
+    if (listeners.size === 0) pickWatchers.delete(key)
+  }
+}
+
+export type PreviewPreset = (typeof PRESETS)[number]["key"]
+
+export const PRESETS = [
+  { key: "desktop", icon: "layout-right", width: 1280, height: 720 },
+  { key: "tablet", icon: "layout-right-partial", width: 768, height: 1024 },
+  { key: "mobile", icon: "layout-right", width: 390, height: 844 },
+] as const
+
 
 function initialUrl(sessionKey: string, tabId: string) {
   if (typeof localStorage === "undefined") return DEFAULT_URL
@@ -71,12 +104,6 @@ function insertElementChip(fullText: string) {
   return true
 }
 
-const PRESETS = [
-  { key: "desktop", icon: "layout-right", width: 1280, height: 720 },
-  { key: "tablet", icon: "layout-right-partial", width: 768, height: 1024 },
-  { key: "mobile", icon: "layout-right", width: 390, height: 844 },
-] as const
-
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 2
 const ZOOM_STEP = 0.25
@@ -95,7 +122,13 @@ function consoleMark(level: ConsoleEntry["level"]) {
   return { class: "text-text-base", mark: "·" }
 }
 
-export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) {
+export function SessionPreviewTab(props: {
+  tabId: string
+  sessionKey: string
+  chrome?: "full" | "stage"
+  preset?: PreviewPreset
+  fill?: boolean
+}) {
   const language = useLanguage()
   const [url, setUrl] = createSignal(initialUrl(props.sessionKey, props.tabId))
   const [draft, setDraft] = createSignal(url())
@@ -103,7 +136,7 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
   const [picking, setPicking] = createSignal(false)
   const [canBack, setCanBack] = createSignal(false)
   const [canForward, setCanForward] = createSignal(false)
-  const [preset, setPreset] = createSignal<(typeof PRESETS)[number]["key"]>("desktop")
+  const [preset, setPreset] = createSignal<PreviewPreset>(props.preset ?? "desktop")
   const [zoom, setZoom] = createSignal(1)
   const [viewport, setViewport] = createSignal({ w: 0, h: 0 })
   const [consoleOpen, setConsoleOpen] = createSignal(false)
@@ -114,11 +147,16 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
   let history = url() ? [url()] : []
   let historyIndex = url() ? 0 : -1
   let skipRecord = false
+  const chrome = () => props.chrome ?? "full"
+  const fill = () => !!props.fill
 
   const registriesKey = `${props.sessionKey}.${props.tabId}`
-  registries.set(registriesKey, { set: (value) => navigate(value) })
   onCleanup(() => {
     registries.delete(registriesKey)
+  })
+
+  createEffect(() => {
+    if (props.preset) setPreset(props.preset)
   })
 
   createEffect(() => setDraft(url()))
@@ -160,6 +198,18 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
   const postPick = (enabled: boolean) => {
     frame?.contentWindow?.postMessage({ type: "opencode-preview-pick", enabled }, location.origin)
   }
+  const setPick = (value: boolean) => {
+    setPicking(value)
+    notifyPick(registriesKey, value)
+  }
+  const togglePick = () => {
+    if (!iframeSrc()) return false
+    const next = !picking()
+    setPick(next)
+    postPick(next)
+    return next
+  }
+  onCleanup(() => setPick(false))
 
   const recordLocation = () => {
     if (!frame) return
@@ -203,6 +253,7 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
       requestAnimationFrame(() => setIframeSrc(current))
     }
   }
+  registries.set(registriesKey, { set: (value) => navigate(value), reload, togglePick })
 
   const onFrameLoad = () => {
     recordLocation()
@@ -234,7 +285,7 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
       return
     }
     if (data.type === "opencode-preview-pick") {
-      setPicking(false)
+      setPick(false)
       if (data.picked && data.summary) {
         insertElementChip(` [${language.t("session.preview.element")}: ${data.summary}] `)
       }
@@ -312,123 +363,147 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
 
   return (
     <div data-component="session-preview" class="flex flex-col h-full min-h-0 bg-v2-background-bg-base">
-      <div class="flex items-center gap-1 px-2 py-2 border-b border-v2-border-border-base shrink-0 bg-v2-background-bg-base">
-        <IconButton
-          icon="arrow-left"
-          variant="ghost"
-          class="h-6 w-6"
-          disabled={!canBack()}
-          onClick={() => goHistory(-1)}
-          aria-label={language.t("session.preview.back")}
-        />
-        <IconButton
-          icon="arrow-right"
-          variant="ghost"
-          class="h-6 w-6"
-          disabled={!canForward()}
-          onClick={() => goHistory(1)}
-          aria-label={language.t("session.preview.forward")}
-        />
-        <IconButton
-          icon="refresh"
-          variant="ghost"
-          class="h-6 w-6"
-          disabled={!iframeSrc()}
-          onClick={reload}
-          aria-label={language.t("session.preview.reload")}
-        />
-        <input
-          ref={(el) => (eCurrent = el)}
-          type="text"
-          value={draft()}
-          list="opencode-preview-ports"
-          onInput={(e) => setDraft(e.currentTarget.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commit()
-          }}
-          onBlur={() => setDraft(url())}
-          class="flex-1 min-w-0 h-7 px-2 rounded-[2px] bg-v2-background-bg-deep text-12-regular text-v2-text-text-base outline-none border border-v2-border-border-base focus:border-v2-border-border-focus"
-          placeholder={language.t("session.preview.placeholder")}
-          aria-label={language.t("session.preview.url")}
-          spellcheck={false}
-          autocomplete="off"
-        />
-        <datalist id="opencode-preview-ports">
-          {COMMON_PORTS.map((p) => (
-            <option value={`/preview/${p}/`} />
-          ))}
-        </datalist>
-        <IconButton
-          icon={currentPreset().icon}
-          variant="ghost"
-          class="h-6 w-6"
-          onClick={cycleWidth}
-          aria-label={language.t("session.preview.responsive")}
-          title={widthLabel()}
-        />
-        <div class="relative">
+      <Show when={chrome() === "full"}>
+        <div class="flex items-center gap-1 px-2 py-2 border-b border-v2-border-border-base shrink-0 bg-v2-background-bg-base">
           <IconButton
-            icon="console"
+            icon="arrow-left"
             variant="ghost"
             class="h-6 w-6"
-            classList={{ "!bg-v2-overlay-simple-overlay-hover": consoleOpen() }}
-            onClick={() => setConsoleOpen((o) => !o)}
-            aria-label={language.t("session.preview.console")}
-            aria-pressed={consoleOpen()}
+            disabled={!canBack()}
+            onClick={() => goHistory(-1)}
+            aria-label={language.t("session.preview.back")}
           />
-          <Show when={consoleEntries().length > 0}>
-            <span class="absolute -top-1 -right-1 rounded-full bg-text-on-critical-base px-1 leading-3 text-10-regular text-white">
-              {errorCount() || consoleEntries().length}
-            </span>
-          </Show>
-        </div>
-        <IconButton
-          icon="magnifying-glass"
-          variant="ghost"
-          class="h-6 w-6"
-          classList={{ "!bg-v2-overlay-simple-overlay-hover": picking() }}
-          disabled={!iframeSrc()}
-          onClick={() => {
-            const next = !picking()
-            setPicking(next)
-            postPick(next)
-          }}
-          aria-label={language.t("session.preview.pickElement")}
-          aria-pressed={picking()}
-        />
-      </div>
-      <div ref={setStageEl} class="flex-1 min-h-0 relative overflow-hidden bg-v2-background-bg-deep">
-        <div class="absolute inset-0 overflow-auto p-2 flex items-[safe_center] justify-[safe_center]">
-          <div
-            class="relative shrink-0 overflow-hidden bg-white border border-v2-border-border-base"
-            style={{
-              width: `${frameLayout().shellW}px`,
-              height: `${frameLayout().shellH}px`,
+          <IconButton
+            icon="arrow-right"
+            variant="ghost"
+            class="h-6 w-6"
+            disabled={!canForward()}
+            onClick={() => goHistory(1)}
+            aria-label={language.t("session.preview.forward")}
+          />
+          <IconButton
+            icon="refresh"
+            variant="ghost"
+            class="h-6 w-6"
+            disabled={!iframeSrc()}
+            onClick={reload}
+            aria-label={language.t("session.preview.reload")}
+          />
+          <input
+            ref={(el) => (eCurrent = el)}
+            type="text"
+            value={draft()}
+            list="opencode-preview-ports"
+            onInput={(e) => setDraft(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit()
             }}
-          >
-            <Show
-              when={iframeSrc()}
-              fallback={
-                <div class="absolute inset-0 flex items-center justify-center text-center px-6 text-12-regular text-text-weak">
-                  {language.t("session.preview.empty")}
-                </div>
-              }
-            >
-              <iframe
-                ref={(el) => (frame = el)}
-                src={iframeSrc()}
-                class="absolute top-0 left-0 border-0 bg-white origin-top-left"
-                style={{
-                  width: `${frameLayout().vw}px`,
-                  height: `${frameLayout().vh}px`,
-                  transform: `scale(${frameLayout().scale})`,
-                }}
-                title={language.t("session.tab.browser")}
-                onLoad={onFrameLoad}
-              />
+            onBlur={() => setDraft(url())}
+            class="flex-1 min-w-0 h-7 px-2 rounded-[2px] bg-v2-background-bg-deep text-12-regular text-v2-text-text-base outline-none border border-v2-border-border-base focus:border-v2-border-border-focus"
+            placeholder={language.t("session.preview.placeholder")}
+            aria-label={language.t("session.preview.url")}
+            spellcheck={false}
+            autocomplete="off"
+          />
+          <datalist id="opencode-preview-ports">
+            {COMMON_PORTS.map((p) => (
+              <option value={`/preview/${p}/`} />
+            ))}
+          </datalist>
+          <IconButton
+            icon={currentPreset().icon}
+            variant="ghost"
+            class="h-6 w-6"
+            onClick={cycleWidth}
+            aria-label={language.t("session.preview.responsive")}
+            title={widthLabel()}
+          />
+          <div class="relative">
+            <IconButton
+              icon="console"
+              variant="ghost"
+              class="h-6 w-6"
+              classList={{ "!bg-v2-overlay-simple-overlay-hover": consoleOpen() }}
+              onClick={() => setConsoleOpen((o) => !o)}
+              aria-label={language.t("session.preview.console")}
+              aria-pressed={consoleOpen()}
+            />
+            <Show when={consoleEntries().length > 0}>
+              <span class="absolute -top-1 -right-1 rounded-full bg-text-on-critical-base px-1 leading-3 text-10-regular text-white">
+                {errorCount() || consoleEntries().length}
+              </span>
             </Show>
           </div>
+          <IconButton
+            icon="magnifying-glass"
+            variant="ghost"
+            class="h-6 w-6"
+            classList={{ "!bg-v2-overlay-simple-overlay-hover": picking() }}
+            disabled={!iframeSrc()}
+            onClick={() => togglePick()}
+            aria-label={language.t("session.preview.pickElement")}
+            aria-pressed={picking()}
+          />
         </div>
+      </Show>
+      <div ref={setStageEl} class="flex-1 min-h-0 relative overflow-hidden bg-v2-background-bg-deep">
+        <Show
+          when={!fill()}
+          fallback={
+            <div class="absolute inset-0 bg-white">
+              <Show
+                when={iframeSrc()}
+                fallback={
+                  <div class="absolute inset-0 flex items-center justify-center text-center px-6 text-12-regular text-text-weak">
+                    {language.t("session.studio.empty")}
+                  </div>
+                }
+              >
+                <iframe
+                  ref={(el) => (frame = el)}
+                  src={iframeSrc()}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
+                  class="absolute inset-0 size-full border-0 bg-white"
+                  title={language.t("session.tab.preview")}
+                  onLoad={onFrameLoad}
+                />
+              </Show>
+            </div>
+          }
+        >
+          <div class="absolute inset-0 overflow-auto p-2 flex items-[safe_center] justify-[safe_center]">
+            <div
+              class="relative shrink-0 overflow-hidden bg-white border border-v2-border-border-base"
+              style={{
+                width: `${frameLayout().shellW}px`,
+                height: `${frameLayout().shellH}px`,
+              }}
+            >
+              <Show
+                when={iframeSrc()}
+                fallback={
+                  <div class="absolute inset-0 flex items-center justify-center text-center px-6 text-12-regular text-text-weak">
+                    {language.t(chrome() === "stage" ? "session.studio.empty" : "session.preview.empty")}
+                  </div>
+                }
+              >
+                <iframe
+                  ref={(el) => (frame = el)}
+                  src={iframeSrc()}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
+                  class="absolute top-0 left-0 border-0 bg-white origin-top-left"
+                  style={{
+                    width: `${frameLayout().vw}px`,
+                    height: `${frameLayout().vh}px`,
+                    transform: `scale(${frameLayout().scale})`,
+                  }}
+                  title={language.t("session.tab.preview")}
+                  onLoad={onFrameLoad}
+                />
+              </Show>
+            </div>
+          </div>
+        </Show>
         <Show when={consoleOpen()}>
           <div class="absolute inset-x-0 bottom-0 z-20 max-h-48 overflow-auto border-t border-border-weaker-base bg-background-stronger/95 px-2 py-1.5 space-y-0.5 font-mono text-11-regular">
             <div class="sticky top-0 flex items-center justify-between bg-background-stronger pb-1 text-12-medium text-text-weak">
@@ -462,27 +537,29 @@ export function SessionPreviewTab(props: { tabId: string; sessionKey: string }) 
           </div>
         </Show>
       </div>
-      <div class="shrink-0 flex items-center justify-center gap-1 px-2 py-1.5 border-t border-v2-border-border-base bg-v2-background-bg-base">
-        <IconButton
-          icon="minus-small"
-          variant="ghost"
-          class="h-6 w-6"
-          disabled={zoom() <= ZOOM_MIN}
-          onClick={() => nudgeZoom(-ZOOM_STEP)}
-          aria-label={language.t("session.preview.zoomOut")}
-        />
-        <span class="min-w-10 text-center text-12-regular text-v2-text-text-weak" aria-label={language.t("session.preview.zoom")}>
-          {Math.round(zoom() * 100)}%
-        </span>
-        <IconButton
-          icon="plus-small"
-          variant="ghost"
-          class="h-6 w-6"
-          disabled={zoom() >= ZOOM_MAX}
-          onClick={() => nudgeZoom(ZOOM_STEP)}
-          aria-label={language.t("session.preview.zoomIn")}
-        />
-      </div>
+      <Show when={chrome() === "full"}>
+        <div class="shrink-0 flex items-center justify-center gap-1 px-2 py-1.5 border-t border-v2-border-border-base bg-v2-background-bg-base">
+          <IconButton
+            icon="minus-small"
+            variant="ghost"
+            class="h-6 w-6"
+            disabled={zoom() <= ZOOM_MIN}
+            onClick={() => nudgeZoom(-ZOOM_STEP)}
+            aria-label={language.t("session.preview.zoomOut")}
+          />
+          <span class="min-w-10 text-center text-12-regular text-v2-text-text-weak" aria-label={language.t("session.preview.zoom")}>
+            {Math.round(zoom() * 100)}%
+          </span>
+          <IconButton
+            icon="plus-small"
+            variant="ghost"
+            class="h-6 w-6"
+            disabled={zoom() >= ZOOM_MAX}
+            onClick={() => nudgeZoom(ZOOM_STEP)}
+            aria-label={language.t("session.preview.zoomIn")}
+          />
+        </div>
+      </Show>
     </div>
   )
 }

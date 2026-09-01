@@ -11,6 +11,7 @@ import { dict as zh } from "@/i18n/zh"
 import { authFromToken } from "@/utils/server"
 import { PRODUCT_FAVICON, PRODUCT_VERSION } from "./product"
 import { ServerConnection } from "./context/server"
+import { requestPreviewOpen } from "@/pages/session/v2/preview-url"
 
 const DEFAULT_SERVER_URL_KEY = "opencode.settings.dat:defaultServerUrl"
 
@@ -84,6 +85,7 @@ const openExternal: Platform["openExternal"] = (value) => {
   if (!URL.canParse(value)) return
   const url = new URL(value)
   if (url.protocol !== "http:" && url.protocol !== "https:" && url.protocol !== "mailto:") return
+  if (requestPreviewOpen(url.href)) return
   window.open(url.href, "_blank", "noopener,noreferrer")
 }
 

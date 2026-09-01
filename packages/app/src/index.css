@@ -347,43 +347,32 @@ html {
 }
 
 [data-component="session-project-nav-rail"] {
-  z-index: 40;
+  z-index: 80;
+  overflow: visible;
 }
 
+[data-component="idle-nav"] {
+  width: 16.5rem;
+  margin-block: 0.75rem;
+  margin-inline-start: 0.75rem;
+}
+
+/* In-flow rail stays 3rem. The flyout is abspos and must not animate width:
+   interpolating width relayouts every label and invalidates the session
+   panels the flyout paints over. */
 [data-component="session-project-nav"] {
-  width: 14.5rem;
-  clip-path: inset(0 calc(14.5rem - 3rem) 0 0);
+  width: 3rem;
   box-shadow: none;
-  transition:
-    clip-path 180ms var(--ease-out) 80ms,
-    box-shadow 180ms var(--ease-out) 80ms;
 }
 
-[dir="rtl"] [data-component="session-project-nav"] {
-  clip-path: inset(0 0 0 calc(14.5rem - 3rem));
-}
-
-@media (hover: hover) and (pointer: fine) {
-  [data-component="session-project-nav-rail"]:hover [data-component="session-project-nav"],
-  [data-component="session-project-nav-rail"]:focus-within [data-component="session-project-nav"] {
-    clip-path: inset(0 0 0 0);
-    box-shadow: 8px 0 24px -12px color-mix(in srgb, var(--v2-background-bg-deep) 55%, transparent);
-    transition-delay: 0ms;
-  }
-
-  [dir="rtl"] [data-component="session-project-nav-rail"]:hover [data-component="session-project-nav"],
-  [dir="rtl"] [data-component="session-project-nav-rail"]:focus-within [data-component="session-project-nav"] {
-    box-shadow: -8px 0 24px -12px color-mix(in srgb, var(--v2-background-bg-deep) 55%, transparent);
-  }
-}
-
-[data-component="session-project-nav"][data-expanded] {
-  clip-path: inset(0 0 0 0);
+[data-component="session-project-nav-rail"][data-hover-open] [data-component="session-project-nav"],
+[data-component="session-project-nav-rail"]:focus-within [data-component="session-project-nav"] {
+  width: 14.5rem;
   box-shadow: 8px 0 24px -12px color-mix(in srgb, var(--v2-background-bg-deep) 55%, transparent);
-  transition-delay: 0ms;
 }
 
-[dir="rtl"] [data-component="session-project-nav"][data-expanded] {
+[dir="rtl"] [data-component="session-project-nav-rail"][data-hover-open] [data-component="session-project-nav"],
+[dir="rtl"] [data-component="session-project-nav-rail"]:focus-within [data-component="session-project-nav"] {
   box-shadow: -8px 0 24px -12px color-mix(in srgb, var(--v2-background-bg-deep) 55%, transparent);
 }
 
@@ -401,19 +390,83 @@ html {
   transition: opacity 150ms var(--ease-out);
 }
 
+[data-oc-enter],
+[data-component="dock-prompt"],
+[data-component="session-followup-dock"],
+[data-component="session-revert-dock"],
+[data-component="dialog-v2"] [data-slot="dialog-container"] {
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+[data-component="dialog-overlay"] {
+  transition: opacity 200ms var(--ease-out);
+  opacity: 1;
+}
+
 @starting-style {
   #review-panel [data-slot="tabs-content"] {
     opacity: 0;
   }
+
+  [data-oc-enter],
+  [data-component="dock-prompt"],
+  [data-component="session-followup-dock"],
+  [data-component="session-revert-dock"] {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+
+  [data-oc-enter="row"] {
+    transform: scale(0.98);
+  }
+
+  [data-oc-enter="idle-nav"] {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  [data-component="dialog-overlay"] {
+    opacity: 0;
+  }
+
+  [data-component="dialog-v2"] [data-slot="dialog-container"] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-component="session-project-nav"] {
+  #review-panel [data-slot="tabs-content"] {
     transition: none;
   }
 
-  #review-panel [data-slot="tabs-content"] {
-    transition: none;
+  [data-oc-enter],
+  [data-component="dock-prompt"],
+  [data-component="session-followup-dock"],
+  [data-component="session-revert-dock"],
+  [data-component="dialog-v2"] [data-slot="dialog-container"] {
+    transition: opacity 180ms var(--ease-out);
+    transform: none;
+  }
+
+  [data-component="dialog-overlay"] {
+    transition: opacity 180ms var(--ease-out);
+  }
+
+  @starting-style {
+    [data-oc-enter],
+    [data-component="dock-prompt"],
+    [data-component="session-followup-dock"],
+    [data-component="session-revert-dock"],
+    [data-oc-enter="row"],
+    [data-oc-enter="idle-nav"],
+    [data-component="dialog-v2"] [data-slot="dialog-container"] {
+      transform: none;
+    }
   }
 
   ::view-transition-group(*),

@@ -38,6 +38,7 @@ function isBackgroundOpen(event: MouseEvent) {
 
 export type HomeSessionsViewProps = {
   language: ReturnType<typeof useLanguage>
+  density?: "page" | "nav"
   groups: Accessor<HomeSessionGroup[]>
   showProjectName: Accessor<boolean>
   server: Accessor<ServerConnection.Key>
@@ -72,16 +73,24 @@ export type HomeSessionsViewProps = {
 }
 
 export function HomeSessionsView(props: HomeSessionsViewProps) {
+  const density = () => props.density ?? "page"
   return (
     <section
       ref={props.onSetHoverTarget}
       class="min-h-0 min-w-0 flex-1 flex flex-col"
       aria-label={props.language.t("sidebar.project.recentSessions")}
     >
-      <div class="sticky top-0 z-30 shrink-0 bg-v2-background-bg-base pb-3 pt-6 lg:pt-12" onWheel={props.onWheel}>
+      <div
+        class="sticky top-0 z-30 shrink-0 bg-v2-background-bg-base pb-3"
+        classList={{
+          "pt-6 lg:pt-12": density() === "page",
+          "pt-1": density() === "nav",
+        }}
+        onWheel={props.onWheel}
+      >
         <HomeSessionSearch {...props} />
         <Suspense>
-          <Show when={props.groups().length > 0 && props.canCreateSession()}>
+          <Show when={density() === "page" && props.groups().length > 0 && props.canCreateSession()}>
             <div class="pointer-events-none absolute right-0 top-[84px] z-20 flex lg:top-[108px]">
               <ButtonV2
                 data-action="home-new-session"
@@ -97,14 +106,21 @@ export function HomeSessionsView(props: HomeSessionsViewProps) {
           </Show>
         </Suspense>
       </div>
-      <div class="pointer-events-none sticky top-[84px] z-40 h-0 -mr-3 lg:top-[108px]">
-        <div
-          ref={props.onSetThumbTrack}
-          data-component="home-session-scroll-track"
-          class="relative ml-auto h-[calc(100cqh-84px)] w-3 lg:h-[calc(100cqh-108px)]"
-        />
-      </div>
-      <div class="-mr-3 min-h-[calc(100cqh-72px)] lg:min-h-[calc(100cqh-96px)]">
+      <Show when={density() === "page"}>
+        <div class="pointer-events-none sticky top-[84px] z-40 h-0 -mr-3 lg:top-[108px]">
+          <div
+            ref={props.onSetThumbTrack}
+            data-component="home-session-scroll-track"
+            class="relative ml-auto h-[calc(100cqh-84px)] w-3 lg:h-[calc(100cqh-108px)]"
+          />
+        </div>
+      </Show>
+      <div
+        class="-mr-3"
+        classList={{
+          "min-h-[calc(100cqh-72px)] lg:min-h-[calc(100cqh-96px)]": density() === "page",
+        }}
+      >
         <Suspense
           fallback={
             <div class="pt-3">
@@ -116,7 +132,8 @@ export function HomeSessionsView(props: HomeSessionsViewProps) {
             when={props.groups().length > 0}
             fallback={
               <HomeSessionsEmpty
-                onNewSession={props.canCreateSession() ? props.onCreateSession : undefined}
+                density={density()}
+                onNewSession={density() === "page" && props.canCreateSession() ? props.onCreateSession : undefined}
                 language={props.language}
               />
             }
@@ -130,6 +147,7 @@ export function HomeSessionsView(props: HomeSessionsViewProps) {
                       titleOpacity={props.titleOpacity(group.id)}
                       onSetRef={(element) => props.onSetHeader(group.id, element)}
                       elevated={index() === 0}
+                      density={density()}
                     />
                     <div
                       class={`flex min-w-0 flex-col gap-px pt-4 ${index() === props.groups().length - 1 ? "" : "mb-6"}`}
@@ -397,15 +415,18 @@ function HomeSessionGroupHeader(props: {
   titleOpacity: number
   onSetRef: (element: HTMLDivElement) => void
   elevated?: boolean
+  density?: "page" | "nav"
 }) {
   return (
     <div
       ref={props.onSetRef}
-      class={`
-        pointer-events-none sticky top-[84px] flex h-7 min-w-0 items-center justify-between
-        bg-v2-background-bg-base pl-3 lg:top-[108px]
-      `}
-      classList={{ "home-session-group-header z-[5]": !!props.elevated, "z-10": !props.elevated }}
+      class="pointer-events-none sticky flex h-7 min-w-0 items-center justify-between bg-v2-background-bg-base pl-3"
+      classList={{
+        "home-session-group-header z-[5]": !!props.elevated,
+        "z-10": !props.elevated,
+        "top-[84px] lg:top-[108px]": props.density !== "nav",
+        "top-[52px]": props.density === "nav",
+      }}
     >
       <div class={HOME_SECTION_LABEL} style={{ opacity: props.titleOpacity }}>
         {props.title}
@@ -506,7 +527,18 @@ function HomeSessionProjectName(props: { name: string; search?: boolean }) {
   )
 }
 
-function HomeSessionsEmpty(props: { onNewSession?: () => void; language: ReturnType<typeof useLanguage> }) {
+function HomeSessionsEmpty(props: {
+  density?: "page" | "nav"
+  onNewSession?: () => void
+  language: ReturnType<typeof useLanguage>
+}) {
+  if (props.density === "nav") {
+    return (
+      <p class="px-2 pt-2 text-[13px] leading-5 tracking-[-0.04px] text-v2-text-text-muted [font-weight:440]">
+        {props.language.t("home.sessions.empty.description")}
+      </p>
+    )
+  }
   return (
     <div class="flex min-h-full flex-col items-center gap-4 px-6 pt-[52px] text-center">
       <div

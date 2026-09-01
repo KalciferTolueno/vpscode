@@ -48,6 +48,7 @@ const names = [
   "checklist",
   "console",
   "expand",
+  "fullscreen",
   "collapse",
   "code",
   "code-lines",

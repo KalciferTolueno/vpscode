@@ -1,0 +1,133 @@
+.session-studio {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--v2-background-bg-base);
+}
+
+.session-studio[data-fullscreen] {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.session-studio-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--v2-border-border-base);
+  background: var(--v2-background-bg-base);
+}
+
+.session-studio-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--v2-background-bg-deep);
+  border: 1px solid var(--v2-border-border-base);
+}
+
+.session-studio-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--v2-text-text-muted);
+  font-size: 12px;
+  font-weight: 530;
+  letter-spacing: -0.04px;
+  cursor: pointer;
+}
+
+.session-studio-switch button:hover {
+  color: var(--v2-text-text-base);
+}
+
+.session-studio-switch button[aria-pressed="true"],
+.session-studio-switch button[aria-selected="true"] {
+  background: var(--v2-background-bg-layer-03);
+  color: var(--v2-text-text-base);
+}
+
+.session-studio-switch button[aria-pressed="true"]::before,
+.session-studio-switch button[aria-selected="true"]::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.session-studio-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-inline-start: auto;
+}
+
+.session-studio-presets {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.session-studio-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 3px;
+  border: 1px solid var(--v2-border-border-base);
+  background: var(--v2-background-bg-layer-03);
+  color: var(--v2-text-text-base);
+  font-size: 12px;
+  font-weight: 530;
+  letter-spacing: -0.04px;
+  cursor: pointer;
+}
+
+.session-studio-download:hover {
+  background: var(--v2-overlay-simple-overlay-hover);
+}
+
+.session-studio-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.session-studio-pane {
+  position: absolute;
+  inset: 0;
+  opacity: 1;
+  transition: opacity 150ms var(--ease-out);
+}
+
+.session-studio-pane[hidden] {
+  display: none;
+}
+
+@starting-style {
+  .session-studio-pane {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-studio-switch button {
+    transition: none;
+  }
+}

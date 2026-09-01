@@ -177,6 +177,8 @@ beforeAll(async () => {
       promoteDraft: (draftID: string, session: { server: string; sessionId: string }) => {
         promotedDrafts.push({ draftID, ...session })
       },
+      addSessionTab: (tab: { server: string; sessionId: string }) => ({ type: "session" as const, ...tab }),
+      select: () => undefined,
     }),
   }))
 

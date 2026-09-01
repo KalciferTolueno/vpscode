@@ -1,40 +1,39 @@
-import { For, Show, createEffect, createMemo } from "solid-js"
-import { createStore } from "solid-js/store"
-import { Portal } from "solid-js/web"
+import { For, Show, createMemo, createSignal, onMount } from "solid-js"
 import { createMediaQuery } from "@solid-primitives/media"
 import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { useLanguage } from "@/context/language"
 import { type PromptProject } from "@/components/prompt-project-selector"
-import { useTitlebarProjectNavMount } from "@/components/titlebar"
 import { createPromptProjectControls } from "@/pages/session/composer"
 import { SessionTabAvatarView } from "@/pages/layout/session-tab-avatar"
 import { useProjectNavAvatarState } from "@/pages/layout/project-avatar-state"
 import { displayName } from "@/pages/layout/helpers"
 import { ServerConnection, useServer } from "@/context/server"
 import { pathKey } from "@/utils/path-key"
-import { Persist, persisted } from "@/utils/persist"
 
 const COLLAPSED_WIDTH = "3rem"
 
 export function SessionProjectNav(props: { ref?: HTMLElement | ((el: HTMLElement) => void) }) {
   const language = useLanguage()
   const server = useServer()
-  const titlebar = useTitlebarProjectNavMount()
   const controls = createPromptProjectControls()
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const canHover = createMediaQuery("(hover: hover) and (pointer: fine)")
-  const [prefs, setPrefs] = persisted(
-    Persist.global("session.project-nav"),
-    createStore({ expanded: false }),
-  )
-  const pinned = () => prefs.expanded
+  const [hoverOpen, setHoverOpen] = createSignal(false)
+  const [hoverArmed, setHoverArmed] = createSignal(false)
+  let rail: HTMLElement | undefined
 
-  createEffect((wasDesktop?: boolean) => {
-    const desktop = isDesktop()
-    if (!desktop && pinned() && wasDesktop !== false) setPrefs("expanded", false)
-    return desktop
+  const closeHover = () => {
+    setHoverOpen(false)
+    setHoverArmed(true)
+  }
+
+  onMount(() => {
+    requestAnimationFrame(() => {
+      if (rail?.matches(":hover")) return
+      setHoverArmed(true)
+    })
   })
 
   const projects = createMemo(() => controls().available)
@@ -64,7 +63,6 @@ export function SessionProjectNav(props: { ref?: HTMLElement | ((el: HTMLElement
 
   const openProject = (project: PromptProject) => {
     controls().select(project.worktree, project.server?.key)
-    if (!isDesktop()) setPrefs("expanded", false)
   }
 
   const projectServer = (project: PromptProject) => {
@@ -77,120 +75,94 @@ export function SessionProjectNav(props: { ref?: HTMLElement | ((el: HTMLElement
     controls().add(language.t("home.project.add"), serverKey ?? controls().server)
   }
 
-  const toggle = () => setPrefs("expanded", (value) => !value)
-  const toggleLabel = () => (pinned() ? language.t("session.todo.collapse") : language.t("home.projects"))
-
-  const panel = (open: boolean) => (
-    <aside
-      data-component="session-project-nav"
-      data-expanded={open ? "" : undefined}
-      class="flex h-full flex-col overflow-hidden rounded-[3px] border border-v2-border-border-base bg-v2-background-bg-base"
-      aria-label={language.t("home.projects")}
-    >
-      <div class="min-h-0 flex-1 overflow-y-auto no-scrollbar py-2">
-        <Show
-          when={projects().length > 0}
-          fallback={
-            <button
-              type="button"
-              class="flex h-8 w-full min-w-0 items-center text-left text-v2-text-text-muted [font-weight:440] hover:bg-v2-background-bg-layer-01 hover:text-v2-text-text-base"
-              onClick={() => addProject()}
-            >
-              <span class="flex w-12 shrink-0 items-center justify-center">
-                <IconV2 name="folder-add-left" size="small" class="text-v2-icon-icon-muted" />
-              </span>
-              <span class="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap pe-2">
-                {language.t("home.project.add")}
-              </span>
-            </button>
-          }
-        >
-          <div class="flex flex-col gap-1">
-            <For each={grouped()}>
-              {(group) => (
-                <div class="flex min-w-0 flex-col gap-1">
-                  <Show when={servers().length > 1 && group.name}>
-                    <div class="truncate pb-1 pe-2 ps-12 text-[11px] leading-none text-v2-text-text-faint [font-weight:530]">
-                      {group.name}
-                    </div>
-                  </Show>
-                  <For each={group.items}>
-                    {(project) => (
-                      <SessionProjectNavRow
-                        project={project}
-                        server={projectServer(project)}
-                        selected={selected(project)}
-                        onSelect={() => openProject(project)}
-                      />
-                    )}
-                  </For>
-                </div>
-              )}
-            </For>
-          </div>
-        </Show>
-      </div>
-      <div class="flex w-12 shrink-0 justify-center pb-2">
-        <TooltipV2 placement="right" value={language.t("home.project.add")} inactive={canHover() || open}>
-          <IconButtonV2
-            variant="ghost-muted"
-            size="small"
-            icon={<IconV2 name="folder-add-left" />}
-            aria-label={language.t("home.project.add")}
-            onClick={() => addProject()}
-          />
-        </TooltipV2>
-      </div>
-    </aside>
-  )
-
   return (
-    <>
-      <Show when={isDesktop()}>
-        <Show when={titlebar()} keyed>
-          {(mount) => (
-            <Portal mount={mount}>
-              <TooltipV2 placement="bottom" class="shrink-0" value={toggleLabel()}>
-                <IconButtonV2
-                  type="button"
-                  variant="ghost-muted"
-                  size="large"
-                  class="!w-9 shrink-0"
-                  icon={<IconV2 name="sidebar-right" />}
-                  state={pinned() ? "pressed" : undefined}
-                  aria-label={toggleLabel()}
-                  aria-pressed={pinned()}
-                  onClick={toggle}
-                />
-              </TooltipV2>
-            </Portal>
-          )}
-        </Show>
-        <div
-          ref={props.ref}
-          data-component="session-project-nav-rail"
-          class="relative z-40 shrink-0 min-h-0 h-full"
-          style={{ width: COLLAPSED_WIDTH }}
+    <Show when={isDesktop()}>
+      <div
+        ref={(el) => {
+          rail = el
+          const next = props.ref
+          if (typeof next === "function") next(el)
+        }}
+        data-component="session-project-nav-rail"
+        data-hover-open={hoverOpen() ? "" : undefined}
+        class="relative z-[80] shrink-0 min-h-0 h-full overflow-visible"
+        style={{ width: COLLAPSED_WIDTH }}
+        onPointerEnter={() => {
+          if (!canHover() || !hoverArmed()) return
+          setHoverOpen(true)
+        }}
+        onPointerLeave={closeHover}
+        onFocusIn={() => setHoverOpen(true)}
+        onFocusOut={(event) => {
+          const next = event.relatedTarget
+          if (next instanceof Node && rail?.contains(next)) return
+          if (rail?.matches(":hover")) return
+          closeHover()
+        }}
+      >
+        <aside
+          data-component="session-project-nav"
+          class="absolute inset-y-0 start-0 z-[1] flex h-full flex-col overflow-hidden rounded-[3px] border border-v2-border-border-base bg-v2-background-bg-base"
+          aria-label={language.t("home.projects")}
+          aria-expanded={hoverOpen()}
         >
-          <div class="absolute inset-y-0 start-0">{panel(pinned())}</div>
-        </div>
-      </Show>
-      <Show when={!isDesktop() && pinned()}>
-        <Portal>
-          <button
-            type="button"
-            class="fixed inset-0 z-40 bg-black/40"
-            aria-label={language.t("session.todo.collapse")}
-            onClick={toggle}
-          />
-          <div class="fixed inset-y-0 start-0 z-50 p-3 pointer-events-none">
-            <div class="pointer-events-auto h-full" data-component="session-project-nav-rail">
-              {panel(true)}
-            </div>
+          <div class="min-h-0 flex-1 overflow-y-auto no-scrollbar py-2">
+            <Show
+              when={projects().length > 0}
+              fallback={
+                <button
+                  type="button"
+                  class="flex h-8 w-full min-w-0 items-center text-left text-v2-text-text-muted [font-weight:440] hover:bg-v2-background-bg-layer-01 hover:text-v2-text-text-base"
+                  onClick={() => addProject()}
+                >
+                  <span class="flex w-12 shrink-0 items-center justify-center">
+                    <IconV2 name="folder-add-left" size="small" class="text-v2-icon-icon-muted" />
+                  </span>
+                  <span class="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap pe-2">
+                    {language.t("home.project.add")}
+                  </span>
+                </button>
+              }
+            >
+              <div class="flex flex-col gap-1">
+                <For each={grouped()}>
+                  {(group) => (
+                    <div class="flex min-w-0 flex-col gap-1">
+                      <Show when={servers().length > 1 && group.name}>
+                        <div class="truncate pb-1 pe-2 ps-12 text-[11px] leading-none text-v2-text-text-faint [font-weight:530]">
+                          {group.name}
+                        </div>
+                      </Show>
+                      <For each={group.items}>
+                        {(project) => (
+                          <SessionProjectNavRow
+                            project={project}
+                            server={projectServer(project)}
+                            selected={selected(project)}
+                            onSelect={() => openProject(project)}
+                          />
+                        )}
+                      </For>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </Show>
           </div>
-        </Portal>
-      </Show>
-    </>
+          <div class="flex w-12 shrink-0 justify-center pb-2">
+            <TooltipV2 placement="right" value={language.t("home.project.add")} inactive={canHover()}>
+              <IconButtonV2
+                variant="ghost-muted"
+                size="small"
+                icon={<IconV2 name="folder-add-left" />}
+                aria-label={language.t("home.project.add")}
+                onClick={() => addProject()}
+              />
+            </TooltipV2>
+          </div>
+        </aside>
+      </div>
+    </Show>
   )
 }
 

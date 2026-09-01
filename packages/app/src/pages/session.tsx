@@ -84,7 +84,9 @@ import {
   sessionPanelWidthMax,
 } from "@/pages/session/session-panel-width"
 import { SessionProjectNav } from "@/pages/session/project-nav"
-import { SessionPreviewTab } from "@/pages/session/v2/session-preview-tab"
+import { SessionPreviewTab, setPreviewUrlFor } from "@/pages/session/v2/session-preview-tab"
+import { SessionStudio } from "@/pages/session/v2/session-studio"
+import { requestPreviewOpen, startPreviewFilePoll } from "@/pages/session/v2/preview-url"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { sessionPanelLayout } from "@/pages/session/session-panel-layout"
 import { SessionReviewEmptyChangesV2 } from "@opencode-ai/session-ui/v2/session-review-empty-changes-v2"
@@ -273,13 +275,31 @@ function ResolvedTargetSessionRoute() {
     // lineage mid-resolution), which tears down the workspace subtree including
     // the terminal. Same-workspace tab switches keep it open because warm
     // targets resolve synchronously from the sync cache.
-    <Show when={directory()}>
+    <Show when={directory()} fallback={<SessionRouteLoading />}>
       <SDKProvider directory={targetDirectory}>
         <DirectoryDataProvider directory={targetDirectory} server={serverKey}>
           <TargetSessionPage />
         </DirectoryDataProvider>
       </SDKProvider>
     </Show>
+  )
+}
+
+function SessionRouteLoading() {
+  return (
+    <SessionRouteFrame padded>
+      <div class="flex-1 min-h-0 flex flex-col md:flex-row gap-3">
+        <div class="hidden md:block w-12 shrink-0 self-stretch rounded-[3px] border border-v2-border-border-base bg-v2-background-bg-base" />
+        <div
+          class="min-h-0 min-w-0 flex-1 self-stretch rounded-[3px] border border-v2-border-border-base bg-v2-background-bg-base"
+          data-oc-enter
+        />
+        <div
+          class="hidden md:block min-h-0 min-w-0 flex-1 self-stretch rounded-[3px] border border-v2-border-border-base bg-v2-background-bg-base"
+          data-oc-enter
+        />
+      </div>
+    </SessionRouteFrame>
   )
 }
 
@@ -456,7 +476,7 @@ export default function Page() {
   const isDesktop = createMediaQuery("(min-width: 768px)")
   const size = createSizing()
   const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
-  const desktopV2ReviewOpen = createMemo(() => newSessionDesign() && desktopReviewOpen() && !!params.id)
+  const desktopV2ReviewOpen = createMemo(() => newSessionDesign() && isDesktop() && !!params.id)
   const terminalOpen = createMemo(() => view().terminal.opened())
   const desktopTerminalOpen = createMemo(() => isDesktop() && terminalOpen())
   const desktopFileTreeOpen = createMemo(
@@ -622,6 +642,25 @@ export default function Page() {
     newSessionWorktree: "main",
     deferRender: false,
   })
+
+  onCleanup(
+    startPreviewFilePoll({
+      directory: () => (params.id ? sdk().directory : undefined),
+      read: async (path) => {
+        const result = await sdk().client.file.read({ path })
+        const raw = result.data
+        if (typeof raw === "string") return raw
+        if (raw && typeof raw.content === "string") return raw.content
+        return ""
+      },
+      onUrl: (url) => {
+        setPreviewUrlFor(sessionKey(), "browser", url)
+        requestPreviewOpen(url)
+        openReviewPanel()
+        if (!isDesktop()) setStore("mobileTab", "browser")
+      },
+    }),
+  )
 
   const [followup, setFollowup] = persisted(
     Persist.serverWorkspace(serverSDK().scope, sdk().directory, "followup", ["followup.v1"]),
@@ -2077,7 +2116,7 @@ export default function Page() {
           onClick={() => setStore("mobileTab", newSessionDesign() ? "browser" : "changes")}
         >
           {newSessionDesign()
-            ? language.t("session.tab.browser")
+            ? language.t("session.tab.preview")
             : hasReview()
               ? language.t("session.review.filesChanged", { count: reviewCount() })
               : language.t("session.review.change.other")}
@@ -2102,7 +2141,12 @@ export default function Page() {
         <Switch>
           <Match when={params.id && mobileBrowser()}>
             <div class="relative h-full min-h-0 overflow-hidden">
-              <SessionPreviewTab tabId="browser" sessionKey={sessionKey()} />
+              <Show
+                when={newSessionDesign()}
+                fallback={<SessionPreviewTab tabId="browser" sessionKey={sessionKey()} />}
+              >
+                <SessionStudio sessionKey={sessionKey()} fileBrowserState={reviewV2State} />
+              </Show>
             </div>
           </Match>
           <Match when={params.id && mobileChanges()}>
@@ -2290,7 +2334,7 @@ export default function Page() {
       <SessionHeader />
       <div
         ref={panelRow}
-        class="flex-1 min-h-0 flex flex-col md:flex-row"
+        class="relative isolate flex-1 min-h-0 flex flex-col md:flex-row overflow-visible"
         classList={{
           "gap-3 p-3": settings.general.newLayoutDesigns(),
         }}

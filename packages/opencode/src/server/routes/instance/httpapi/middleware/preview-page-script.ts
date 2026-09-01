@@ -13,6 +13,12 @@ export const previewPageScript = `(function(){
   console.debug=hook("log",console.debug);
   console.warn=hook("warn",console.warn);
   console.error=hook("error",console.error);
+  window.open=function(url){
+    if(typeof url==="string"&&url&&url!=="about:blank"){
+      try{location.assign(url)}catch(e){}
+    }
+    return window;
+  };
   window.addEventListener("error",function(e){
     var t=e.target;
     if(t&&t!==window&&t.tagName&&(t.tagName==="IMG"||t.tagName==="SCRIPT"||t.tagName==="LINK"||t.tagName==="VIDEO"||t.tagName==="AUDIO")){
@@ -26,6 +32,23 @@ export const previewPageScript = `(function(){
     send({type:"opencode-preview-console",level:"error",text:reason.slice(0,500),source:"promise"});
   });
   var picking=false,overlay,last;
+  function keepInFrame(el){
+    if(!el)return;
+    var t=el.target;
+    if(!t||t==="_self"||t==="_parent"||t==="_top")return false;
+    el.target="_self";
+    return true;
+  }
+  document.addEventListener("click",function(e){
+    if(picking)return;
+    var a=e.target&&e.target.closest?e.target.closest("a"):null;
+    if(!keepInFrame(a)||!a.href)return;
+    e.preventDefault();
+    try{location.assign(a.href)}catch(err){}
+  },true);
+  document.addEventListener("submit",function(e){
+    keepInFrame(e.target);
+  },true);
   function describe(el){
     var tag=el.tagName.toLowerCase();
     var id=el.id?"#"+el.id:"";

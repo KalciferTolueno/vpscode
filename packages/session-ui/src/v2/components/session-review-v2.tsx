@@ -93,7 +93,7 @@ export function SessionReviewV2Sidebar(props: SessionReviewV2SidebarProps) {
               onInput={(event) => props.onFilterChange(event.currentTarget.value)}
               onKeyDown={props.onFilterKeyDown}
               autofocus={props.filterAutofocus}
-              ref={props.filterRef}
+              ref={(el) => props.filterRef?.(el)}
               role={props.filterControls ? "combobox" : undefined}
               aria-autocomplete={props.filterControls ? "list" : undefined}
               aria-controls={props.filterControls}

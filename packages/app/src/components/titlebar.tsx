@@ -22,7 +22,7 @@ import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 
-import { LayoutRoute, useLayout } from "@/context/layout"
+import { isIdleRoute, LayoutRoute, useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
 import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
@@ -58,15 +58,6 @@ export function useTitlebarRightMount() {
   const language = useLanguage()
   const [mount, setMount] = createSignal<HTMLElement | null>(null)
   const sync = () => setMount(document.getElementById("opencode-titlebar-right"))
-  onMount(sync)
-  createEffect(on(language.direction, sync, { defer: true }))
-  return mount
-}
-
-export function useTitlebarProjectNavMount() {
-  const language = useLanguage()
-  const [mount, setMount] = createSignal<HTMLElement | null>(null)
-  const sync = () => setMount(document.getElementById("opencode-titlebar-project-nav"))
   onMount(sync)
   createEffect(on(language.direction, sync, { defer: true }))
   return mount
@@ -354,7 +345,8 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
 
               tabs.newDraft({ server: fallback.server, directory: fallback.project.worktree }, "")
             }
-            const toggleHome = () => tabs.toggleHome({ home: layout.route().type === "home", current: currentTab() })
+            const idle = () => isIdleRoute(layout.route())
+            const toggleHome = () => tabs.toggleHome({ home: idle(), current: currentTab() })
 
             command.register("titlebar-home", () => [
               {
@@ -415,7 +407,6 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                 <Show when={windows() || linux()}>
                   <WindowsAppMenu command={command} platform={platform} variant="v2" />
                 </Show>
-                <div id="opencode-titlebar-project-nav" class="hidden md:flex shrink-0 items-center empty:hidden" />
                 <TooltipV2
                   placement="bottom"
                   value={
@@ -432,10 +423,10 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                     size="large"
                     class="!w-9 shrink-0"
                     icon={<IconV2 name="grid-plus" />}
-                    state={layout.route().type === "home" ? "pressed" : undefined}
+                    state={idle() ? "pressed" : undefined}
                     onClick={toggleHome}
                     aria-label={language.t("home.title")}
-                    aria-pressed={layout.route().type === "home"}
+                    aria-pressed={idle()}
                   />
                 </TooltipV2>
 

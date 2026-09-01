@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { normalizePreviewUrl, previewIframeSrc } from "./preview-url"
+import { normalizePreviewUrl, previewIframeSrc, startPreviewFilePoll } from "./preview-url"
 
 describe("normalizePreviewUrl", () => {
   test("maps loopback hosts and bare ports onto the preview proxy", () => {
@@ -22,5 +22,31 @@ describe("normalizePreviewUrl", () => {
 
   test("keeps empty input empty", () => {
     expect(normalizePreviewUrl("")).toBe("")
+  })
+})
+
+describe("startPreviewFilePoll", () => {
+  test("opens a new preview url immediately", async () => {
+    const urls: string[] = []
+    const stop = startPreviewFilePoll({
+      directory: () => "/project",
+      read: async () => "/preview/5173/",
+      onUrl: (url) => urls.push(url),
+    })
+    await Promise.resolve()
+    stop()
+    expect(urls).toEqual(["/preview/5173/"])
+  })
+
+  test("ignores invalid urls and repeats", async () => {
+    const urls: string[] = []
+    const stop = startPreviewFilePoll({
+      directory: () => "/project",
+      read: async () => "https://example.com",
+      onUrl: (url) => urls.push(url),
+    })
+    await Promise.resolve()
+    stop()
+    expect(urls).toEqual([])
   })
 })

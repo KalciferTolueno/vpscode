@@ -23,17 +23,15 @@
   pointer-events: none;
 
   transform-origin: var(--kb-hovercard-content-transform-origin);
-  /* Entrance: instant (trying no animation — may revert to 120ms ease-out). */
-  animation: none;
+  animation: sessionTabPopoverIn 120ms var(--ease-out);
 
   &:focus-visible,
   &:focus-within {
     outline: none;
   }
 
-  /* Exit: instant (trying no animation — may revert to 80ms ease-out). */
   &[data-closed] {
-    animation: none;
+    animation: sessionTabPopoverOut 80ms var(--ease-out) forwards;
   }
 
   /* Warm streak (rapid tab hopping): appear/disappear instantly so the enter

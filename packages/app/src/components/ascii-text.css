@@ -8,9 +8,9 @@
 }
 
 .ascii-text-fallback {
+  display: none;
   position: absolute;
   inset: 0;
-  display: flex;
   align-items: center;
   justify-content: center;
   margin: 0;
@@ -21,6 +21,10 @@
   line-height: 1;
   color: var(--v2-background-bg-inverse);
   opacity: 0.72;
+}
+
+.ascii-text-container[data-ascii-failed] .ascii-text-fallback {
+  display: flex;
 }
 
 .ascii-text-container:has([data-ascii-ready="true"]) .ascii-text-fallback {
@@ -44,6 +48,27 @@
   z-index: 9;
   overflow: hidden;
   color: var(--v2-background-bg-inverse);
-  opacity: 0.72;
+  opacity: 0;
+  transform: scale(0.97);
+  transform-origin: center;
   font-variant-ligatures: none;
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+
+.ascii-text-container:has([data-ascii-ready="true"]) pre {
+  opacity: 0.72;
+  transform: scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ascii-text-container pre {
+    transform: none;
+    transition: opacity 180ms var(--ease-out);
+  }
+
+  .ascii-text-container:has([data-ascii-ready="true"]) pre {
+    transform: none;
+  }
 }

@@ -14,6 +14,8 @@ test("preview script captures console, errors, and element picks", () => {
   expect(previewPageScript).toContain("opencode-preview-console")
   expect(previewPageScript).toContain("opencode-preview-pick")
   expect(previewPageScript).toContain("console.log")
+  expect(previewPageScript).toContain("window.open")
+  expect(previewPageScript).toContain("location.assign")
   expect(previewPageScript).not.toContain("</script>")
 })
 
