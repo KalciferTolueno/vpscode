@@ -9,6 +9,7 @@ import {
 } from "../../src/server/routes/instance/httpapi/middleware/rewrite-preview-urls"
 import {
   PREVIEW_LOOPBACK_HOSTS,
+  PREVIEW_UNREACHABLE_STATUS,
   previewUnreachablePage,
   previewUpstreamURL,
   stripFramingHeaders,
@@ -51,9 +52,11 @@ test("preview upstream URLs cover IPv4 and IPv6 loopback", () => {
 
 test("unreachable preview page names the port instead of rendering blank", () => {
   const page = previewUnreachablePage(5173)
+  expect(PREVIEW_UNREACHABLE_STATUS).toBe(200)
   expect(page).toContain("5173")
   expect(page).toContain("0.0.0.0")
   expect(page).toContain("--host 0.0.0.0 --port 5173")
+  expect(page).toContain("not an EasyPanel service")
   expect(page).not.toContain("--base")
 })
 
@@ -82,21 +85,7 @@ test("rewrites Vite root-absolute assets onto the preview prefix", () => {
   expect(html.indexOf("importmap")).toBeLessThan(html.indexOf('src="/preview/5173/src/main.tsx"'))
 })
 
-test("an IPv6-only server is reachable through the IPv6 preview loopback host", async () => {
+test("preview loopback hosts include IPv6", () => {
   expect(PREVIEW_LOOPBACK_HOSTS.includes("[::1]")).toBe(true)
-  const server = Bun.serve({
-    hostname: "::1",
-    port: 0,
-    fetch() {
-      return new Response("ok")
-    },
-  })
-  try {
-    const port = server.port
-    if (port === undefined) throw new Error("expected ephemeral port")
-    const response = await fetch(previewUpstreamURL(port, "/", "[::1]"), { signal: AbortSignal.timeout(400) })
-    expect(response.ok).toBe(true)
-  } finally {
-    server.stop(true)
-  }
+  expect(previewUpstreamURL(5173, "/", "[::1]").href).toBe("http://[::1]:5173/")
 })

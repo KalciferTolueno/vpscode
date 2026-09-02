@@ -101,22 +101,32 @@ export function previewUpstreamURL(port: number, pathWithSearch: string, host: s
   return new URL(path, `http://${host}:${port}`)
 }
 
+export const PREVIEW_UNREACHABLE_STATUS = 200
+
 export function previewUnreachablePage(port: number) {
   return `<!doctype html>
 <html>
-<head><meta charset="utf-8"><title>Preview unreachable</title></head>
+<head><meta charset="utf-8"><title>Preview waiting</title></head>
 <body style="margin:0;background:#121212;color:#eee;font:15px/1.5 ui-sans-serif,system-ui,sans-serif;padding:24px">
-  <h1 style="font-size:18px">Preview cannot reach port ${port}</h1>
-  <p>Nothing responded on localhost, 127.0.0.1, or ::1. Start the app with <code>--host 0.0.0.0 --port ${port}</code>.</p>
+  <h1 style="font-size:18px">Waiting for the app on port ${port}</h1>
+  <p>Preview stays inside this pane. It is not an EasyPanel service and is not published on a public domain.</p>
+  <p>Start the workspace server with <code>--host 0.0.0.0 --port ${port}</code>, then reload Preview.</p>
   <p>Vite: <code>vite --host 0.0.0.0 --port ${port}</code></p>
 </body>
 </html>`
 }
 
+export const PREVIEW_WAITING_HEADER = "x-opencode-preview"
+export const PREVIEW_WAITING_VALUE = "waiting"
+
 function previewUnreachableResponse(port: number) {
   return HttpServerResponse.text(previewUnreachablePage(port), {
-    status: 502,
+    status: PREVIEW_UNREACHABLE_STATUS,
     contentType: "text/html",
+    headers: {
+      "cache-control": "no-store",
+      [PREVIEW_WAITING_HEADER]: PREVIEW_WAITING_VALUE,
+    },
   })
 }
 

@@ -1,7 +1,8 @@
 import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js"
 import { IconButton } from "@opencode-ai/ui/icon-button"
+import { ASCIIText } from "@/components/ascii-text"
 import { useLanguage } from "@/context/language"
-import { previewIframeSrc } from "./preview-url"
+import { previewFrameReady, previewIframeSrc } from "./preview-url"
 
 const STORAGE_PREFIX = "opencode.preview.url"
 const DEFAULT_URL = ""
@@ -133,6 +134,7 @@ export function SessionPreviewTab(props: {
   const [url, setUrl] = createSignal(initialUrl(props.sessionKey, props.tabId))
   const [draft, setDraft] = createSignal(url())
   const [iframeSrc, setIframeSrc] = createSignal(previewIframeSrc(url()))
+  const [live, setLive] = createSignal(false)
   const [picking, setPicking] = createSignal(false)
   const [canBack, setCanBack] = createSignal(false)
   const [canForward, setCanForward] = createSignal(false)
@@ -160,6 +162,24 @@ export function SessionPreviewTab(props: {
   })
 
   createEffect(() => setDraft(url()))
+
+  createEffect(() => {
+    const src = iframeSrc()
+    setLive(false)
+    if (!src) return
+    let cancelled = false
+    const tick = () => {
+      void previewFrameReady(src).then((ok) => {
+        if (!cancelled) setLive(ok)
+      })
+    }
+    tick()
+    const timer = setInterval(tick, 2000)
+    onCleanup(() => {
+      cancelled = true
+      clearInterval(timer)
+    })
+  })
 
   const persist = (next: string) => {
     try {
@@ -203,7 +223,7 @@ export function SessionPreviewTab(props: {
     notifyPick(registriesKey, value)
   }
   const togglePick = () => {
-    if (!iframeSrc()) return false
+    if (!live()) return false
     const next = !picking()
     setPick(next)
     postPick(next)
@@ -245,11 +265,16 @@ export function SessionPreviewTab(props: {
   }
 
   const reload = () => {
+    const current = iframeSrc()
+    if (!current) return
+    if (!live()) {
+      void previewFrameReady(current).then(setLive)
+      return
+    }
     try {
       frame?.contentWindow?.location.reload()
     } catch {
-      const current = iframeSrc()
-      if (current) setIframeSrc("")
+      setIframeSrc("")
       requestAnimationFrame(() => setIframeSrc(current))
     }
   }
@@ -450,26 +475,19 @@ export function SessionPreviewTab(props: {
             variant="ghost"
             class="h-6 w-6"
             classList={{ "!bg-v2-overlay-simple-overlay-hover": picking() }}
-            disabled={!iframeSrc()}
+            disabled={!live()}
             onClick={() => togglePick()}
             aria-label={language.t("session.preview.pickElement")}
             aria-pressed={picking()}
           />
         </div>
       </Show>
-      <div ref={setStageEl} class="flex-1 min-h-0 relative overflow-hidden bg-v2-background-bg-deep">
+      <div ref={setStageEl} class="flex-1 min-h-0 relative overflow-hidden">
         <Show
           when={!fill()}
           fallback={
-            <div class="absolute inset-0 bg-white">
-              <Show
-                when={iframeSrc()}
-                fallback={
-                  <div class="absolute inset-0 flex items-center justify-center text-center px-6 text-12-regular text-text-weak">
-                    {language.t("session.studio.empty")}
-                  </div>
-                }
-              >
+            <div class="absolute inset-0" classList={{ "bg-white": live() }}>
+              <Show when={live()} fallback={<PreviewIdleMark />}>
                 <iframe
                   ref={(el) => (frame = el)}
                   src={iframeSrc()}
@@ -490,10 +508,11 @@ export function SessionPreviewTab(props: {
             }}
           >
             <div
-              class="relative overflow-hidden bg-white"
+              class="relative overflow-hidden"
               classList={{
-                "shrink-0 border border-v2-border-border-base": !flush(),
-                "size-full": flush(),
+                "shrink-0 border border-v2-border-border-base bg-white": !flush() && live(),
+                "size-full": flush() || !live(),
+                "bg-white": flush() && live(),
               }}
               style={
                 flush()
@@ -504,14 +523,7 @@ export function SessionPreviewTab(props: {
                     }
               }
             >
-              <Show
-                when={iframeSrc()}
-                fallback={
-                  <div class="absolute inset-0 flex items-center justify-center text-center px-6 text-12-regular text-text-weak">
-                    {language.t(chrome() === "stage" ? "session.studio.empty" : "session.preview.empty")}
-                  </div>
-                }
-              >
+              <Show when={live()} fallback={<PreviewIdleMark />}>
                 <iframe
                   ref={(el) => (frame = el)}
                   src={iframeSrc()}
@@ -585,6 +597,16 @@ export function SessionPreviewTab(props: {
           />
         </div>
       </Show>
+    </div>
+  )
+}
+
+function PreviewIdleMark() {
+  return (
+    <div class="absolute inset-0 flex items-center justify-center overflow-hidden px-6">
+      <div class="relative w-full max-w-[720px] h-[140px] sm:h-[220px]" role="img" aria-label="vpscode">
+        <ASCIIText text="vpscode" enableWaves={false} asciiFontSize={6} textFontSize={240} />
+      </div>
     </div>
   )
 }

@@ -116,15 +116,17 @@ Si no aparece la línea de escucha, revisa el log desde el primer error. Si apar
 
 ## Navegador integrado
 
-El navegador de la pestaña Browser es un iframe del proxy `/preview/<puerto>/`. No hace falta Chrome ni Chromium en el servidor. Los servidores de desarrollo deben escuchar en `0.0.0.0`, no solo en `127.0.0.1`.
+El panel Preview no publica la app en EasyPanel. No hay que crear otro servicio, otro dominio ni abrir el puerto `5173` al exterior. EasyPanel solo enruta `https://tu-dominio/` hacia VPS Code en el puerto `4096`. El iframe pide `/preview/<puerto>/` al mismo VPS Code, y ese proceso habla con `localhost` dentro del contenedor.
 
-Ejemplo con Vite en el puerto `5173`:
+Si Vite aún no escucha, Preview debe mostrar la página de espera de VPS Code. Un `502` haría que EasyPanel sustituyera el iframe por su imagen de error; el proxy responde `200` en ese caso para evitarlo.
+
+Los servidores de desarrollo deben escuchar en `0.0.0.0`, no solo en `127.0.0.1`. Ejemplo con Vite en el puerto `5173`:
 
 ```bash
 bun run dev -- --host 0.0.0.0 --port 5173
 ```
 
-El proxy reescribe las rutas absolutas (`/src/main.tsx`, `/@vite/client`) para que el iframe las cargue como `/preview/5173/...`. No hace falta `--base`. Después, el navegador integrado accede mediante `/preview/5173/`. La aplicación principal continúa usando el puerto `4096`.
+El proxy reescribe las rutas absolutas (`/src/main.tsx`, `/@vite/client`) para que el iframe las cargue como `/preview/5173/...`. No hace falta `--base`. La aplicación principal continúa usando el puerto `4096`.
 
 ## Actualización
 

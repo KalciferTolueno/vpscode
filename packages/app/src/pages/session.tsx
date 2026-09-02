@@ -86,7 +86,7 @@ import {
 import { SessionProjectNav } from "@/pages/session/project-nav"
 import { SessionPreviewTab, setPreviewUrlFor } from "@/pages/session/v2/session-preview-tab"
 import { SessionStudio } from "@/pages/session/v2/session-studio"
-import { requestPreviewOpen, startPreviewFilePoll } from "@/pages/session/v2/preview-url"
+import { latestPreviewUrlFromParts, requestPreviewOpen, startPreviewFilePoll } from "@/pages/session/v2/preview-url"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { sessionPanelLayout } from "@/pages/session/session-panel-layout"
 import { SessionReviewEmptyChangesV2 } from "@opencode-ai/session-ui/v2/session-review-empty-changes-v2"
@@ -643,6 +643,13 @@ export default function Page() {
     deferRender: false,
   })
 
+  const revealPreview = (url: string) => {
+    setPreviewUrlFor(sessionKey(), "browser", url)
+    requestPreviewOpen(url)
+    openReviewPanel()
+    if (!isDesktop()) setStore("mobileTab", "browser")
+  }
+
   onCleanup(
     startPreviewFilePoll({
       directory: () => (params.id ? sdk().directory : undefined),
@@ -653,13 +660,29 @@ export default function Page() {
         if (raw && typeof raw.content === "string") return raw.content
         return ""
       },
-      onUrl: (url) => {
-        setPreviewUrlFor(sessionKey(), "browser", url)
-        requestPreviewOpen(url)
-        openReviewPanel()
-        if (!isDesktop()) setStore("mobileTab", "browser")
-      },
+      onUrl: revealPreview,
     }),
+  )
+
+  createEffect(
+    on(
+      () => {
+        const list = messages()
+        const lastUser = lastUserMessage()?.id
+        const start = lastUser ? list.findIndex((message) => message.id === lastUser) : -1
+        const turn = start >= 0 ? list.slice(start) : list.slice(-6)
+        const found = latestPreviewUrlFromParts(
+          turn.flatMap((message) => (message.role === "user" ? [] : (sync().data.part[message.id] ?? []))),
+        )
+        return `${params.id ?? ""}\0${found}`
+      },
+      (key) => {
+        const found = key.slice(key.indexOf("\0") + 1)
+        if (!found) return
+        const handle = window.setTimeout(() => revealPreview(found), 400)
+        onCleanup(() => clearTimeout(handle))
+      },
+    ),
   )
 
   const [followup, setFollowup] = persisted(
