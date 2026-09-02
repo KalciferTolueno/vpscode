@@ -30,6 +30,8 @@ import { useSettings } from "@/context/settings"
 import { WindowsAppMenu } from "./windows-app-menu"
 import { applyPath, backPath, forwardPath } from "./titlebar-history"
 import { TitlebarTabStrip } from "@/components/titlebar-tab-strip"
+import { COMPACT_SHELL_QUERY } from "@/pages/layout/compact-shell"
+import { sessionTitle } from "@/utils/session-title"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { createMediaQuery } from "@solid-primitives/media"
 import { readSessionTabsRemovedDetail, SESSION_TABS_REMOVED_EVENT } from "@/components/titlebar-session-events"
@@ -79,6 +81,7 @@ export function Titlebar(props: {
   const params = useParams()
   const useV2Titlebar = createMemo(() => settings.general.newLayoutDesigns())
   const mobile = createMediaQuery("(max-width: 767px)")
+  const compact = createMediaQuery(COMPACT_SHELL_QUERY)
   const bottom = createMemo(() => useV2Titlebar() && mobile() && settings.general.mobileTitlebarPosition() === "bottom")
 
   const mac = createMemo(() => platform.platform === "desktop" && platform.os === "macos")
@@ -350,9 +353,9 @@ export function Titlebar(props: {
               tabs.newDraft({ server: fallback.server, directory: fallback.project.worktree }, "")
             }
             const idle = () => isIdleRoute(layout.route())
-            const homePressed = () => (mobile() && props.mobileNav ? props.mobileNav.open() : idle())
+            const homePressed = () => (compact() && props.mobileNav ? props.mobileNav.open() : idle())
             const toggleHome = () => {
-              if (mobile() && props.mobileNav) {
+              if (compact() && props.mobileNav) {
                 props.mobileNav.toggle()
                 return
               }
@@ -441,43 +444,56 @@ export function Titlebar(props: {
                   />
                 </TooltipV2>
 
-                <TitlebarTabStrip
-                  tabs={tabsStore}
-                  currentTab={currentTab}
-                  projectDirectories={projectDirectories}
-                  projectServer={projectServer}
-                  forceTruncate={tabsAreOverflowing()}
-                  onOverflowChange={setTabsAreOverflowing}
-                  onNavigate={(tab, el) => {
-                    tabs.select(tab)
-                    el?.scrollIntoView({ behavior: "instant" })
-                  }}
-                  onClose={(tab) => {
-                    const index = tabsStore.findIndex((item) => tabKey(item) === tabKey(tab))
-                    if (index !== -1) tabsStoreActions.closeTab(index)
-                  }}
-                  onReorder={(keys) => tabsStoreActions.reorder(keys)}
-                />
-                <TooltipV2
-                  placement="bottom"
-                  value={
-                    <>
-                      {language.t("command.session.new")}
-                      <KeybindV2 keys={newTabTooltipKeybind(command)} variant="neutral" />
-                    </>
+                <Show
+                  when={!compact()}
+                  fallback={
+                    <div class="min-w-0 flex-1 truncate px-1 text-[13px] leading-4 tracking-[-0.04px] text-v2-text-text-base [font-weight:530]">
+                      {sessionTitle(session()?.title) || language.t("home.title")}
+                    </div>
                   }
                 >
-                  <IconButtonV2
-                    type="button"
-                    variant="ghost-muted"
-                    size="large"
-                    class="shrink-0"
-                    icon={<IconV2 name="plus" />}
-                    onClick={openNewTab}
-                    aria-label={language.t("command.session.new")}
+                  <TitlebarTabStrip
+                    tabs={tabsStore}
+                    currentTab={currentTab}
+                    projectDirectories={projectDirectories}
+                    projectServer={projectServer}
+                    forceTruncate={tabsAreOverflowing()}
+                    onOverflowChange={setTabsAreOverflowing}
+                    onNavigate={(tab, el) => {
+                      tabs.select(tab)
+                      el?.scrollIntoView({ behavior: "instant" })
+                    }}
+                    onClose={(tab) => {
+                      const index = tabsStore.findIndex((item) => tabKey(item) === tabKey(tab))
+                      if (index !== -1) tabsStoreActions.closeTab(index)
+                    }}
+                    onReorder={(keys) => tabsStoreActions.reorder(keys)}
                   />
-                </TooltipV2>
-                <div class="flex-1" />
+                </Show>
+                <Show when={!compact()}>
+                  <TooltipV2
+                    placement="bottom"
+                    value={
+                      <>
+                        {language.t("command.session.new")}
+                        <KeybindV2 keys={newTabTooltipKeybind(command)} variant="neutral" />
+                      </>
+                    }
+                  >
+                    <IconButtonV2
+                      type="button"
+                      variant="ghost-muted"
+                      size="large"
+                      class="shrink-0"
+                      icon={<IconV2 name="plus" />}
+                      onClick={openNewTab}
+                      aria-label={language.t("command.session.new")}
+                    />
+                  </TooltipV2>
+                </Show>
+                <Show when={!compact()}>
+                  <div class="flex-1" />
+                </Show>
                 <TitlebarV2Right state={v2RightState()} />
               </div>
             )

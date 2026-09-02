@@ -21,6 +21,7 @@ import { pathKey } from "@/utils/path-key"
 import { showToast } from "@/utils/toast"
 import { Binary } from "@opencode-ai/core/util/binary"
 import { archiveHomeSession } from "../home-session-archive"
+import { groupSessionsByProject } from "./home-session-groups"
 import type { HomeController } from "./home-controller"
 
 const HOME_SESSION_LIMIT = 64
@@ -31,7 +32,7 @@ export type HomeSessionRecord = {
 }
 
 export type HomeSessionGroup = {
-  id: "today" | "yesterday" | "older"
+  id: string
   title: string
   sessions: HomeSessionRecord[]
 }
@@ -96,6 +97,16 @@ export function createHomeSessionsController(home: HomeController) {
   )
   const records = createMemo(() => allRecords().slice(0, HOME_SESSION_LIMIT))
   const groups = createMemo(() => groupSessions(records(), language))
+  const projectGroups = createMemo(() =>
+    groupSessionsByProject(
+      buildHomeSessionRecords({
+        sessions: indexedSessions,
+        projectDirectories: () => home.project.list().flatMap(directories),
+        projects: home.project.list,
+        projectByID,
+      }).slice(0, HOME_SESSION_LIMIT),
+    ),
+  )
   const prefetched = new Set<string>()
 
   createEffect(() => {
@@ -170,6 +181,7 @@ export function createHomeSessionsController(home: HomeController) {
     data: {
       records,
       groups,
+      projectGroups,
       loading: () => sessionLoad.isLoading,
       searchRecords: allRecords,
     },

@@ -20,15 +20,16 @@ import { createHomeScrollController } from "./home-scroll-controller"
 import { createHomeSessionSearchController } from "./home-session-search-controller"
 import { createHomeSessionsController, type OpenSessionOptions } from "./home-sessions-controller"
 import { HomeSessions } from "./home-sessions"
+import { COMPACT_SHELL_QUERY } from "@/pages/layout/compact-shell"
 
 export function IdleNav(props: { desktop: boolean; mobileOpen: boolean; onMobileClose: () => void }) {
-  const mobile = createMediaQuery("(max-width: 767px)")
+  const compact = createMediaQuery(COMPACT_SHELL_QUERY)
   return (
     <>
-      <Show when={!mobile() && props.desktop}>
+      <Show when={!compact() && props.desktop}>
         <IdleNavPanel />
       </Show>
-      <Show when={mobile() && props.mobileOpen}>
+      <Show when={compact() && props.mobileOpen}>
         <IdleNavMobile onClose={props.onMobileClose} />
       </Show>
     </>
@@ -38,6 +39,7 @@ export function IdleNav(props: { desktop: boolean; mobileOpen: boolean; onMobile
 function IdleNavMobile(props: { onClose: () => void }) {
   const language = useLanguage()
   const settings = useSettings()
+  const tablet = createMediaQuery("(min-width: 768px)")
   const bottom = createMemo(
     () => settings.general.newLayoutDesigns() && settings.general.mobileTitlebarPosition() === "bottom",
   )
@@ -52,10 +54,22 @@ function IdleNavMobile(props: { onClose: () => void }) {
 
   return (
     <Portal>
+      <Show when={tablet()}>
+        <button
+          type="button"
+          class="fixed inset-0 z-[69] bg-black/45 lg:hidden"
+          aria-label={language.t("common.close")}
+          onClick={props.onClose}
+        />
+      </Show>
       <div
         data-component="idle-nav-mobile"
         data-oc-enter
-        class="fixed inset-x-0 z-[70] flex flex-col md:hidden bg-v2-background-bg-deep"
+        class="fixed z-[70] flex flex-col lg:hidden bg-v2-background-bg-deep"
+        classList={{
+          "inset-x-0": !tablet(),
+          "left-0 w-[18.5rem] max-w-[85vw] border-r border-v2-border-border-base": tablet(),
+        }}
         style={{
           top: bottom() ? "0px" : "calc(2.25rem + env(safe-area-inset-top, 0px))",
           bottom: bottom() ? "calc(2.25rem + env(safe-area-inset-bottom, 0px))" : "0px",
@@ -91,7 +105,8 @@ function IdleNavPanel(props: { mobile?: boolean; onNavigate?: () => void }) {
   }
   const nav = { copy: sessions.copy, data: sessions.data, session, tab: sessions.tab }
   const searchSessions = createHomeSessionSearchController(home, nav)
-  const scroll = createHomeScrollController(sessions.data.groups)
+  const groups = createMemo(() => (props.mobile ? sessions.data.projectGroups() : sessions.data.groups()))
+  const scroll = createHomeScrollController(groups)
 
   const selectProject = (server: ServerConnection.Any, directory: string) => {
     projects.project.select(server, directory)
@@ -100,18 +115,38 @@ function IdleNavPanel(props: { mobile?: boolean; onNavigate?: () => void }) {
     tabs.updateDraft(draftID, { server: ServerConnection.key(server), directory })
   }
 
+  const addProject = () => {
+    const server = home.server.focused() ?? projects.server.list()[0]
+    if (!server) return
+    projects.project.choose(server)
+  }
+
   return (
     <nav
       data-component="idle-nav"
       data-mobile={props.mobile ? "" : undefined}
       data-oc-enter={props.mobile ? undefined : "idle-nav"}
-      class="flex min-h-0 shrink-0 flex-col self-stretch overflow-hidden rounded-[3px] border border-v2-border-border-base bg-v2-background-bg-base"
-      classList={{ "flex-1 w-full": props.mobile }}
+      class="flex min-h-0 shrink-0 flex-col self-stretch overflow-hidden bg-v2-background-bg-base"
+      classList={{
+        "flex-1 w-full": props.mobile,
+        "rounded-[3px] border border-v2-border-border-base": !props.mobile,
+      }}
       aria-label={language.t("home.title")}
     >
       <Show when={props.mobile}>
-        <div class="flex h-10 shrink-0 items-center justify-between gap-2 px-2 pt-1">
-          <div class="px-2 text-v2-text-text-base [font-weight:530]">{language.t("home.title")}</div>
+        <div class="flex h-10 shrink-0 items-center gap-1 px-1.5">
+          <div class="min-w-0 flex-1 px-1.5 text-[13px] text-v2-text-text-muted [font-weight:530]">
+            {language.t("home.title")}
+          </div>
+          <Show when={projects.server.list().length > 0}>
+            <IconButtonV2
+              variant="ghost-muted"
+              size="small"
+              icon={<IconV2 name="folder-add-left" />}
+              aria-label={language.t("home.project.add")}
+              onClick={addProject}
+            />
+          </Show>
           <IconButtonV2
             variant="ghost-muted"
             size="small"
@@ -121,7 +156,7 @@ function IdleNavPanel(props: { mobile?: boolean; onNavigate?: () => void }) {
           />
         </div>
       </Show>
-      <div class="shrink-0 px-2 pt-2">
+      <div class="shrink-0 px-1.5" classList={{ "pt-1": props.mobile, "pt-2 px-2": !props.mobile }}>
         <Show when={sessions.session.canCreate()}>
           <ButtonV2
             data-action="idle-nav-new-session"
@@ -141,9 +176,18 @@ function IdleNavPanel(props: { mobile?: boolean; onNavigate?: () => void }) {
         onScroll={(event) => scroll.viewport.update(event.currentTarget.scrollTop)}
         onWheel={scroll.viewport.containWheel}
       >
-        <div class="flex min-h-0 flex-col gap-4 px-1 pb-3">
-          <HomeProjects projects={projects} scroll={scroll} density="nav" onSelectProject={selectProject} />
-          <HomeSessions sessions={nav} search={searchSessions} scroll={scroll} density="nav" />
+        <div class="flex min-h-0 flex-col px-1 pb-3" classList={{ "gap-2": props.mobile, "gap-4": !props.mobile }}>
+          <Show when={!props.mobile}>
+            <HomeProjects projects={projects} scroll={scroll} density="nav" onSelectProject={selectProject} />
+          </Show>
+          <HomeSessions
+            sessions={nav}
+            search={searchSessions}
+            scroll={scroll}
+            density="nav"
+            sidebar={props.mobile}
+            groups={groups}
+          />
         </div>
       </ScrollView>
       <HomeUtilityNav

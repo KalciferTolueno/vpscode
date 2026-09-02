@@ -360,7 +360,9 @@ html {
 [data-component="idle-nav"][data-mobile] {
   width: auto;
   flex: 1 1 auto;
-  margin: 0.75rem;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
 }
 
 /* In-flow rail stays 3rem. The flyout is abspos and must not animate width:

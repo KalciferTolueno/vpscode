@@ -1,6 +1,7 @@
+import type { Accessor } from "solid-js"
 import type { HomeScrollController } from "./home-scroll-controller"
 import type { HomeSessionSearchController } from "./home-session-search-controller"
-import type { HomeSessionsController } from "./home-sessions-controller"
+import type { HomeSessionGroup, HomeSessionsController } from "./home-sessions-controller"
 import { HomeSessionsView } from "./home-sessions-view"
 
 export function HomeSessions(props: {
@@ -8,13 +9,16 @@ export function HomeSessions(props: {
   search: HomeSessionSearchController
   scroll: HomeScrollController
   density?: "page" | "nav"
+  groups?: Accessor<HomeSessionGroup[]>
+  sidebar?: boolean
 }) {
   return (
     <HomeSessionsView
       language={props.sessions.copy.language}
       density={props.density}
-      groups={props.sessions.data.groups}
-      showProjectName={props.sessions.session.showProjectName}
+      sidebar={props.sidebar}
+      groups={props.groups ?? props.sessions.data.groups}
+      showProjectName={() => (props.sidebar ? false : props.sessions.session.showProjectName())}
       server={props.sessions.session.server}
       canCreateSession={props.sessions.session.canCreate}
       searchValue={props.search.query.value}

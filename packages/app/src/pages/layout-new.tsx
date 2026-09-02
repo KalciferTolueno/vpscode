@@ -7,6 +7,7 @@ import { Titlebar, type TitlebarUpdate } from "@/components/titlebar"
 import { isIdleRoute, useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
 import { IdleNav } from "@/pages/home/idle-nav"
+import { COMPACT_SHELL_QUERY } from "@/pages/layout/compact-shell"
 import { setV2Toast, ToastRegion } from "@/utils/toast"
 
 const Dither = lazy(async () => {
@@ -18,13 +19,13 @@ export default function NewLayout(props: ParentProps) {
   const platform = usePlatform()
   const layout = useLayout()
   const idle = createMemo(() => isIdleRoute(layout.route()))
-  const mobile = createMediaQuery("(max-width: 767px)")
+  const compact = createMediaQuery(COMPACT_SHELL_QUERY)
   const [mobileNav, setMobileNav] = createSignal(false)
   const [state, setState] = createStore({ debugTools: true })
 
   createEffect(() => setV2Toast(true))
   createEffect(() => {
-    if (!mobile()) setMobileNav(false)
+    if (!compact()) setMobileNav(false)
   })
 
   const update: TitlebarUpdate = {
@@ -71,7 +72,7 @@ export default function NewLayout(props: ParentProps) {
           class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict"
         >
           <div class="flex min-h-0 min-w-0 w-full flex-1">
-            <Show when={idle() || mobileNav()}>
+            <Show when={idle() || compact()}>
               <IdleNav desktop={idle()} mobileOpen={mobileNav()} onMobileClose={() => setMobileNav(false)} />
             </Show>
             <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
