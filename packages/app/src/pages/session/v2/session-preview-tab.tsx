@@ -2,6 +2,7 @@ import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "so
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { ASCIIText } from "@/components/ascii-text"
 import { useLanguage } from "@/context/language"
+import { previewFrameLayout } from "./preview-frame-layout"
 import { previewFrameReady, previewIframeSrc } from "./preview-url"
 
 const STORAGE_PREFIX = "opencode.preview.url"
@@ -330,32 +331,20 @@ export function SessionPreviewTab(props: {
   })
 
   const currentPreset = () => PRESETS.find((item) => item.key === preset()) ?? PRESETS[0]
-  const flush = () => fill() || chrome() === "stage"
+  const flush = () => fill()
 
   const frameLayout = createMemo(() => {
     const next = currentPreset()
     const pad = flush() ? 0 : 16
-    const availW = Math.max(viewport().w - pad, 1)
-    const availH = Math.max(viewport().h - pad, 1)
-    const zoomScale = chrome() === "full" ? zoom() : 1
-    if (next.key === "desktop" || fill()) {
-      const scale = Math.max(0.05, zoomScale)
-      return {
-        vw: availW / scale,
-        vh: availH / scale,
-        scale,
-        shellW: availW,
-        shellH: availH,
-      }
-    }
-    const scale = Math.max(0.05, (availW / next.width) * zoomScale)
-    return {
-      vw: next.width,
-      vh: Math.max(1, availH / scale),
-      scale,
-      shellW: availW,
-      shellH: availH,
-    }
+    return previewFrameLayout({
+      key: next.key,
+      width: next.width,
+      height: next.height,
+      availW: Math.max(viewport().w - pad, 1),
+      availH: Math.max(viewport().h - pad, 1),
+      fill: fill(),
+      zoom: chrome() === "full" ? zoom() : 1,
+    })
   })
 
   const cycleWidth = () => {
@@ -503,14 +492,14 @@ export function SessionPreviewTab(props: {
           <div
             class="absolute inset-0 flex"
             classList={{
-              "overflow-auto p-2 items-[safe_center] justify-[safe_center]": !flush(),
+              "overflow-auto p-2 items-[safe_center] justify-[safe_center] bg-v2-background-bg-deep": !flush(),
               "overflow-hidden": flush(),
             }}
           >
             <div
               class="relative overflow-hidden"
               classList={{
-                "shrink-0 border border-v2-border-border-base bg-white": !flush() && live(),
+                "shrink-0 rounded-xl border border-v2-border-border-base bg-white": !flush() && live(),
                 "size-full": flush() || !live(),
                 "bg-white": flush() && live(),
               }}

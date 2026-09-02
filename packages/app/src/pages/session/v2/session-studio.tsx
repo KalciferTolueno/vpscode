@@ -289,7 +289,7 @@ export function SessionStudio(props: {
             sessionKey={props.sessionKey}
             chrome="stage"
             preset={preset()}
-            fill={fullscreen() || preset() === "desktop"}
+            fill={preset() === "desktop"}
           />
         </div>
         <Show when={studioView() === "code"}>
