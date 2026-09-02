@@ -99,8 +99,12 @@ function IdleNavPanel(props: { mobile?: boolean; onNavigate?: () => void }) {
       close()
     },
     open: (item: Session, options?: OpenSessionOptions) => {
-      sessions.session.open(item, options)
-      if (!options?.background) close()
+      if (options?.background) {
+        sessions.session.open(item, options)
+        return
+      }
+      close()
+      queueMicrotask(() => sessions.session.open(item, options))
     },
   }
   const nav = { copy: sessions.copy, data: sessions.data, session, tab: sessions.tab }

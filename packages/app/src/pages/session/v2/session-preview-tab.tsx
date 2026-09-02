@@ -492,14 +492,14 @@ export function SessionPreviewTab(props: {
           <div
             class="absolute inset-0 flex"
             classList={{
-              "overflow-auto p-2 items-[safe_center] justify-[safe_center] bg-v2-background-bg-deep": !flush(),
+              "overflow-auto p-2 items-center justify-center bg-v2-background-bg-deep": !flush(),
               "overflow-hidden": flush(),
             }}
           >
             <div
               class="relative overflow-hidden"
               classList={{
-                "shrink-0 rounded-xl border border-v2-border-border-base bg-white": !flush() && live(),
+                "shrink-0 rounded-[12px] border border-v2-border-border-base bg-white": !flush() && live(),
                 "size-full": flush() || !live(),
                 "bg-white": flush() && live(),
               }}
