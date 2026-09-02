@@ -1,5 +1,6 @@
 import { createEffect, createSignal, mergeProps, onCleanup } from "solid-js"
 import { CanvAscii, type CanvAsciiOptions } from "./ascii-text-engine"
+import { markWebGLUnavailable, webglAvailable } from "./webgl-available"
 import "./ascii-text.css"
 
 export interface ASCIITextProps {
@@ -42,6 +43,10 @@ function measure(el: HTMLDivElement) {
 function createEngine(el: HTMLDivElement, props: Required<ASCIITextProps>) {
   const size = measure(el)
   if (size.width < 1 || size.height < 1) return
+  if (!webglAvailable()) {
+    el.dataset.asciiFailed = ""
+    return
+  }
   try {
     const instance = new CanvAscii(optionsOf(props), el, size.width, size.height)
     instance.init()
@@ -49,6 +54,7 @@ function createEngine(el: HTMLDivElement, props: Required<ASCIITextProps>) {
     delete el.dataset.asciiFailed
     return instance
   } catch {
+    markWebGLUnavailable()
     el.dataset.asciiFailed = ""
     return
   }
@@ -68,6 +74,7 @@ export function ASCIIText(raw: ASCIITextProps) {
       const width = entry.contentRect.width
       const height = entry.contentRect.height
       if (width < 1 || height < 1) return
+      if (el.dataset.asciiFailed !== undefined) return
       if (!instance) {
         instance = createEngine(el, props)
         return

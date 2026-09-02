@@ -9,6 +9,7 @@ import {
   Vector2,
   WebGLRenderer,
 } from "three"
+import { markWebGLUnavailable, webglAvailable } from "./webgl-available"
 
 const vertexShader = `
 precision highp float;
@@ -135,12 +136,23 @@ export type DitherOptions = {
   mouseRadius: number
 }
 
+function createRenderer() {
+  try {
+    return new WebGLRenderer({
+      antialias: false,
+      alpha: true,
+      powerPreference: "low-power",
+    })
+  } catch {
+    markWebGLUnavailable()
+    return
+  }
+}
+
 export function createDither(el: HTMLElement, options: DitherOptions) {
-  const renderer = new WebGLRenderer({
-    antialias: false,
-    alpha: true,
-    powerPreference: "low-power",
-  })
+  if (!webglAvailable()) return { dispose() {} }
+  const renderer = createRenderer()
+  if (!renderer) return { dispose() {} }
   renderer.setPixelRatio(1)
   renderer.setClearColor(0x000000, 0)
   renderer.domElement.style.display = "block"

@@ -1,5 +1,15 @@
 // Component ported and enhanced from https://codepen.io/JuanFuentes/pen/eYEeoyE
-import * as THREE from "three"
+import {
+  Camera,
+  CanvasTexture,
+  Mesh,
+  NearestFilter,
+  PerspectiveCamera,
+  PlaneGeometry,
+  Scene,
+  ShaderMaterial,
+  WebGLRenderer,
+} from "three"
 
 const vertexShader = `
 varying vec2 vUv;
@@ -56,7 +66,7 @@ interface AsciiFilterOptions {
 }
 
 class AsciiFilter {
-  renderer!: THREE.WebGLRenderer
+  renderer!: WebGLRenderer
   domElement: HTMLDivElement
   pre: HTMLPreElement
   canvas: HTMLCanvasElement
@@ -73,7 +83,7 @@ class AsciiFilter {
   cols = 0
   rows = 0
 
-  constructor(renderer: THREE.WebGLRenderer, { fontSize, fontFamily, charset, invert }: AsciiFilterOptions = {}) {
+  constructor(renderer: WebGLRenderer, { fontSize, fontFamily, charset, invert }: AsciiFilterOptions = {}) {
     this.renderer = renderer
     this.domElement = document.createElement("div")
     this.domElement.style.position = "absolute"
@@ -136,7 +146,7 @@ class AsciiFilter {
     }
   }
 
-  render(scene: THREE.Scene, camera: THREE.Camera) {
+  render(scene: Scene, camera: Camera) {
     const w = this.canvas.width
     const h = this.canvas.height
     if (!this.context || w < 1 || h < 1) return
@@ -277,15 +287,15 @@ export class CanvAscii {
   width: number
   height: number
   enableWaves: boolean
-  camera: THREE.PerspectiveCamera
-  scene: THREE.Scene
+  camera: PerspectiveCamera
+  scene: Scene
   mouse: { x: number; y: number }
   textCanvas!: CanvasTxt
-  texture!: THREE.CanvasTexture
-  geometry: THREE.PlaneGeometry | undefined
-  material: THREE.ShaderMaterial | undefined
-  mesh!: THREE.Mesh
-  renderer!: THREE.WebGLRenderer
+  texture!: CanvasTexture
+  geometry: PlaneGeometry | undefined
+  material: ShaderMaterial | undefined
+  mesh!: Mesh
+  renderer!: WebGLRenderer
   filter!: AsciiFilter
   planeW = 1
   planeH = 1
@@ -308,10 +318,10 @@ export class CanvAscii {
     this.height = height
     this.enableWaves = enableWaves
 
-    this.camera = new THREE.PerspectiveCamera(45, Math.max(this.width / this.height, 0.01), 0.1, 1000)
+    this.camera = new PerspectiveCamera(45, Math.max(this.width / this.height, 0.01), 0.1, 1000)
     this.camera.position.z = 12
 
-    this.scene = new THREE.Scene()
+    this.scene = new Scene()
     this.mouse = { x: this.width / 2, y: this.height / 2 }
 
     this.onMouseMove = this.onMouseMove.bind(this)
@@ -352,15 +362,15 @@ export class CanvAscii {
     this.textCanvas.resize()
     this.textCanvas.render()
 
-    this.texture = new THREE.CanvasTexture(this.textCanvas.texture)
-    this.texture.minFilter = THREE.NearestFilter
+    this.texture = new CanvasTexture(this.textCanvas.texture)
+    this.texture.minFilter = NearestFilter
 
     const textAspect = this.textCanvas.width / Math.max(this.textCanvas.height, 1)
     this.planeH = this.planeBaseHeight
     this.planeW = this.planeH * textAspect
 
-    this.geometry = new THREE.PlaneGeometry(this.planeW, this.planeH, 36, 36)
-    this.material = new THREE.ShaderMaterial({
+    this.geometry = new PlaneGeometry(this.planeW, this.planeH, 36, 36)
+    this.material = new ShaderMaterial({
       vertexShader,
       fragmentShader,
       transparent: true,
@@ -372,7 +382,7 @@ export class CanvAscii {
       },
     })
 
-    this.mesh = new THREE.Mesh(this.geometry, this.material)
+    this.mesh = new Mesh(this.geometry, this.material)
     this.scene.add(this.mesh)
     this.fitCamera()
   }
@@ -389,7 +399,7 @@ export class CanvAscii {
   }
 
   setRenderer() {
-    this.renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true })
+    this.renderer = new WebGLRenderer({ antialias: false, alpha: true })
     this.renderer.setPixelRatio(1)
     this.renderer.setClearColor(0x000000, 0)
 
@@ -445,7 +455,7 @@ export class CanvAscii {
     this.textCanvas.render()
     this.texture.needsUpdate = true
 
-    ;(this.mesh.material as THREE.ShaderMaterial).uniforms.uTime.value = Math.sin(time)
+    ;(this.mesh.material as ShaderMaterial).uniforms.uTime.value = Math.sin(time)
 
     this.updateRotation()
     this.filter.render(this.scene, this.camera)
@@ -461,7 +471,7 @@ export class CanvAscii {
 
   clear() {
     this.scene.traverse((object) => {
-      const obj = object as unknown as THREE.Mesh
+      const obj = object as unknown as Mesh
       if (!obj.isMesh) return
       ;[obj.material].flat().forEach((material) => {
         material.dispose()
